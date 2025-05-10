@@ -1,5 +1,8 @@
 package top.ysqorz.socket.io;
 
+import top.ysqorz.socket.io.packet.FileReceivedPacket;
+import top.ysqorz.socket.io.packet.StringReceivedPacket;
+
 import java.io.*;
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -28,7 +31,7 @@ public class ReadHandler extends Thread implements Closeable {
                     case StringReceivedPacket.STRING_TYPE:
                         String str = new StringReceivedPacket(inputStream).buildEntity();
                         if (Objects.nonNull(callback)) {
-                            callback.onMsgReceived(str);
+                            callback.onTextReceived(str);
                         }
                         break;
                     case FileReceivedPacket.FILE_TYPE:
@@ -51,4 +54,5 @@ public class ReadHandler extends Thread implements Closeable {
     public void close() throws IOException {
         inputStream.close();
     }
+
 }

@@ -1,11 +1,11 @@
-package top.ysqorz.socket.io;
+package top.ysqorz.socket.io.packet;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.util.UUID;
 
 /**
- * <short><文件名><long><文件内容>
+ * [int][文件名][long][文件内容]
  * 
  * @author yaoshiquan
  * @date 2025/5/9
@@ -15,9 +15,15 @@ public class FileReceivedPacket implements ReceivedPacket<File> {
 
     private final DataInputStream inputStream;
     private final byte[] buffer = new byte[1024];
+    private File file;
 
     public FileReceivedPacket(DataInputStream inputStream) {
         this.inputStream = inputStream;
+    }
+
+    @Override
+    public File getEntity() {
+        return file;
     }
 
     @Override
@@ -33,7 +39,7 @@ public class FileReceivedPacket implements ReceivedPacket<File> {
         try (OutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(tmpFile.toPath()))) {
             readBytes(size, outputStream);
         }
-        return tmpFile;
+        return file = tmpFile;
     }
 
     public String readFileName() throws IOException {
@@ -49,7 +55,7 @@ public class FileReceivedPacket implements ReceivedPacket<File> {
             if (len == -1) {
                 throw new EOFException("Unexpected end of stream");
             }
-            read += n;
+            read += len;
         }
         return n - read; // 剩余未读的字节。需要消费缓冲区后重新调用
     }

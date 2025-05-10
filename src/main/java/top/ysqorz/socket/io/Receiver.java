@@ -1,21 +1,19 @@
 package top.ysqorz.socket.io;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.OutputStream;
 
 /**
  * ...
  *
  * @author yaoshiquan
- * @date 2025/5/9
+ * @date 2025/5/10
  */
-public interface MsgChannel extends Closeable {
-    void sendMsg(String msg);
-
-    void sendFile(File file);
-
+public interface Receiver extends Closeable {
     void setReceivedCallback(ReceivedCallback callback);
 
+    /**
+     * 将接收到的字节直接桥接到一个输出流，不需要装箱
+     */
     void bridge(OutputStream outputStream);
 }

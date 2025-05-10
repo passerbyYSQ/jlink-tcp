@@ -42,6 +42,6 @@ public class ClientInfo {
     }
 
     public String toString() {
-        return String.format("[ Id=%s, Ip=%s, Port=%d ]", clientId, getIp(), getRemotePort());
+        return String.format("[ Id=%s, Address=%s:%d ]", clientId, getIp(), getRemotePort());
     }
 }

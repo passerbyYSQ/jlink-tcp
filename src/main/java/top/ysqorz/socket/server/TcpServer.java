@@ -19,5 +19,5 @@ public interface TcpServer extends Closeable {
 
     List<ClientHandler> getAllClients();
 
-    void broadcast(String msg);
+    void broadcast(String text);
 }

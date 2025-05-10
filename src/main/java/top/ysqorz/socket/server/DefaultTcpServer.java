@@ -1,5 +1,8 @@
 package top.ysqorz.socket.server;
 
+import top.ysqorz.socket.io.ReceivedCallback;
+
+import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -14,7 +17,7 @@ import java.util.logging.Logger;
  * @author yaoshiquan
  * @date 2025/5/9
  */
-public class DefaultTcpServer implements TcpServer {
+public class DefaultTcpServer implements TcpServer, ReceivedCallback {
     private static final Logger log = Logger.getLogger(DefaultTcpServer.class.getName());
     private final int port;
     private ServerSocket serverSocket;
@@ -54,10 +57,9 @@ public class DefaultTcpServer implements TcpServer {
     }
 
     @Override
-    public void broadcast(String msg) {
-        List<ClientHandler> clients = getAllClients();
-        for (ClientHandler client : clients) {
-            client.sendMsg(msg);
+    public void broadcast(String text) {
+        for (ClientHandler client : clientHandlerMap.values()) {
+            client.sendText(text);
         }
     }
 
@@ -67,6 +69,16 @@ public class DefaultTcpServer implements TcpServer {
             removeClient(clientId);
         }
         serverSocket.close();
+    }
+
+    @Override
+    public void onTextReceived(String text) {
+        log.info("[Unknown client]: " + text); // TODO 待解决不知道是哪个客户端的问题
+    }
+
+    @Override
+    public void onFileReceived(File file) {
+
     }
 
     private class Acceptor extends Thread {
@@ -82,6 +94,7 @@ public class DefaultTcpServer implements TcpServer {
                 try {
                     Socket socket = serverSocket.accept();
                     DefaultClientHandler clientHandler = new DefaultClientHandler(socket);
+                    clientHandler.setReceivedCallback(DefaultTcpServer.this); // 注册对所有客户端的监听
                     ClientInfo clientInfo = clientHandler.getClientInfo();
                     clientHandlerMap.put(clientInfo.getClientId(), clientHandler);
                     log.info(String.format("Client count: %d. Accept client: %s", clientHandlerMap.size(), clientInfo));

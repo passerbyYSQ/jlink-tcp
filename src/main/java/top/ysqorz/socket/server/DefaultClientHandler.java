@@ -6,6 +6,7 @@ import top.ysqorz.socket.io.WriteHandler;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
@@ -35,13 +36,13 @@ public class DefaultClientHandler implements ClientHandler {
     }
 
     @Override
-    public void sendMsg(String msg) {
-        writeHandler.sendMsg(msg);
+    public void sendText(String text) {
+        writeHandler.sendText(text);
     }
 
     @Override
     public void sendFile(File file) {
-
+        writeHandler.sendFile(file);
     }
 
     @Override
@@ -55,9 +56,15 @@ public class DefaultClientHandler implements ClientHandler {
     }
 
     @Override
+    public void bridge(InputStream inputStream) {
+
+    }
+
+    @Override
     public void close() throws IOException {
         socket.close();
         readHandler.close();
         writeHandler.close();
     }
+
 }

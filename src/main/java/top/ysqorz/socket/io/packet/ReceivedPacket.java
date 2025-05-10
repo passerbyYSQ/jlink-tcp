@@ -1,4 +1,4 @@
-package top.ysqorz.socket.io;
+package top.ysqorz.socket.io.packet;
 
 import java.io.IOException;
 
@@ -9,6 +9,8 @@ import java.io.IOException;
  * @date 2025/5/9
  */
 public interface ReceivedPacket<T> {
+    T getEntity();
+
     /**
      * 装箱
      */

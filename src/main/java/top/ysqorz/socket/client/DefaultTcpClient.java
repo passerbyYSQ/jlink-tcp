@@ -6,6 +6,7 @@ import top.ysqorz.socket.io.WriteHandler;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.logging.Logger;
@@ -39,13 +40,13 @@ public class DefaultTcpClient implements TcpClient {
     }
 
     @Override
-    public void sendMsg(String msg) {
-        writeHandler.sendMsg(msg);
+    public void sendText(String text) {
+        writeHandler.sendText(text);
     }
 
     @Override
     public void sendFile(File file) {
-
+        writeHandler.sendFile(file);
     }
 
     @Override
@@ -55,6 +56,11 @@ public class DefaultTcpClient implements TcpClient {
 
     @Override
     public void bridge(OutputStream outputStream) {
+
+    }
+
+    @Override
+    public void bridge(InputStream inputStream) {
 
     }
 
