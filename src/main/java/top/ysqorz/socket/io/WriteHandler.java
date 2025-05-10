@@ -3,7 +3,10 @@ package top.ysqorz.socket.io;
 import top.ysqorz.socket.io.packet.*;
 
 import java.io.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class WriteHandler implements Closeable {
@@ -23,14 +26,20 @@ public class WriteHandler implements Closeable {
         this.outputStream = new DataOutputStream(outputStream);
     }
 
-    public void sendText(String text) {
-        SendTask<String> sendTask = new SendTask<>(StringReceivedPacket.STRING_TYPE, new StringSendPacket(text, outputStream));
-        executor.execute(sendTask);
+    public void sendAck(AbstractReceivedPacket<?> packet) {
+        executor.execute(new SendTask<>(new AckSendPacket(packet, outputStream)));
     }
 
-    public void sendFile(File file) {
-        SendTask<File> sendTask = new SendTask<>(FileReceivedPacket.FILE_TYPE, new FileSendPacket(file, outputStream));
-        executor.execute(sendTask);
+    public StringSendPacket sendText(String text) {
+        StringSendPacket packet = new StringSendPacket(text, outputStream);
+        executor.execute(new SendTask<>(packet));
+        return packet;
+    }
+
+    public FileSendPacket sendFile(File file) {
+        FileSendPacket packet = new FileSendPacket(file, outputStream);
+        executor.execute(new SendTask<>(packet));
+        return packet;
     }
 
     @Override
@@ -39,28 +48,26 @@ public class WriteHandler implements Closeable {
         executor.shutdownNow();
     }
 
-    private class SendTask<T> implements Runnable, Comparable<SendTask<T>> {
-        byte type;
-        SendPacket<T> packet;
+    private class SendTask<P extends AbstractSendPacket<T>, T> implements Runnable, Comparable<P> {
+       P sendPacket;
 
-        SendTask(byte type, SendPacket<T> packet) {
-            this.type = type;
-            this.packet = packet;
+        SendTask(P sendPacket) {
+            this.sendPacket = sendPacket;
         }
 
         @Override
         public void run() {
             try {
-                outputStream.writeByte(type);
-                packet.unpackEntity();
+                outputStream.writeByte(sendPacket.getType());
+                sendPacket.send();
             } catch (IOException e) {
-                log.severe(e.getMessage());
+                log.severe(e.getMessage()); // TODO 外面的Map中未移除ClientHandler
             }
         }
 
         @Override
-        public int compareTo(SendTask<T> other) {
-            return Byte.compare(type, other.type); // type越小，包越轻量，优先小包发送
+        public int compareTo(P other) {
+            return Byte.compare(sendPacket.getType(), other.getType()); // type越小，包越轻量，优先小包发送
         }
     }
 }

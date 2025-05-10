@@ -1,6 +1,8 @@
 package top.ysqorz.socket.io;
 
+import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
+import top.ysqorz.socket.io.packet.Packet;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
 
 import java.io.*;
@@ -28,20 +30,26 @@ public class ReadHandler extends Thread implements Closeable {
             try {
                 byte type = inputStream.readByte();
                 switch (type) {
-                    case StringReceivedPacket.STRING_TYPE:
-                        String str = new StringReceivedPacket(inputStream).buildEntity();
+                    case Packet.ACK_TYPE:
+                        AckReceivedPacket ackPacket = new AckReceivedPacket(inputStream);
                         if (Objects.nonNull(callback)) {
-                            callback.onTextReceived(str);
+                            callback.onAckReceived(ackPacket);
                         }
                         break;
-                    case FileReceivedPacket.FILE_TYPE:
-                        File file = new FileReceivedPacket(inputStream).buildEntity();
+                    case Packet.STRING_TYPE:
+                        StringReceivedPacket strPacket = new StringReceivedPacket(inputStream);
                         if (Objects.nonNull(callback)) {
-                            callback.onFileReceived(file);
+                            callback.onTextReceived(strPacket);
+                        }
+                        break;
+                    case Packet.FILE_TYPE:
+                        FileReceivedPacket filePacket = new FileReceivedPacket(inputStream);
+                        if (Objects.nonNull(callback)) {
+                            callback.onFileReceived(filePacket);
                         }
                         break;
                     default:
-                        throw new IOException("Unknown type: " + type);
+                        throw new IOException("Unknown type: " + type);  // TODO 外面的Map中未移除ClientHandler
                 }
             } catch (IOException ex) {
                 log.severe(ex.getMessage());

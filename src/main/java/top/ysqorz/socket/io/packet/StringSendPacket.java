@@ -2,7 +2,6 @@ package top.ysqorz.socket.io.packet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 /**
  * ...
@@ -10,13 +9,18 @@ import java.nio.charset.StandardCharsets;
  * @author yaoshiquan
  * @date 2025/5/9
  */
-public class StringSendPacket implements SendPacket<String> {
+public class StringSendPacket extends AbstractSendPacket<String> {
     private final String str;
-    private final DataOutputStream outputStream;
 
-    public StringSendPacket(String str, DataOutputStream outputStream) {
+    public StringSendPacket(String str, DataOutputStream outputStream)  {
+        super(outputStream);
         this.str = str;
-        this.outputStream = outputStream;
+    }
+
+    @Override
+    public void send() throws IOException {
+        super.send();
+        writeStr(str);
     }
 
     @Override
@@ -25,9 +29,7 @@ public class StringSendPacket implements SendPacket<String> {
     }
 
     @Override
-    public void unpackEntity() throws IOException {
-        byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
-        outputStream.writeInt(bytes.length);
-        outputStream.write(bytes);
+    public byte getType() {
+        return StringReceivedPacket.STRING_TYPE;
     }
 }

@@ -1,7 +1,7 @@
 package top.ysqorz.socket.io.packet;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.io.DataInputStream;
+import java.io.IOException;
 
 /**
  * [int][字符串内容]
@@ -9,14 +9,12 @@ import java.nio.charset.StandardCharsets;
  * @author yaoshiquan
  * @date 2025/5/9
  */
-public class StringReceivedPacket implements ReceivedPacket<String> {
-    public static final byte STRING_TYPE = 0;
+public class StringReceivedPacket extends AbstractReceivedPacket<String> {
+    private final String str;
 
-    private final DataInputStream inputStream;
-    private String str;
-
-    public StringReceivedPacket(DataInputStream inputStream) {
-        this.inputStream = inputStream;
+    public StringReceivedPacket(DataInputStream inputStream) throws IOException {
+        super(inputStream);
+        this.str = readStr();
     }
 
     @Override
@@ -25,10 +23,7 @@ public class StringReceivedPacket implements ReceivedPacket<String> {
     }
 
     @Override
-    public String buildEntity() throws IOException {
-        int size = inputStream.readInt();
-        byte[] buffer = new byte[size];
-        inputStream.readFully(buffer);
-        return str = new String(buffer, StandardCharsets.UTF_8);
+    public byte getType() {
+        return STRING_TYPE;
     }
 }

@@ -2,7 +2,11 @@ package top.ysqorz.socket;
 
 import top.ysqorz.socket.client.DefaultTcpClient;
 import top.ysqorz.socket.client.TcpClient;
+import top.ysqorz.socket.io.AbstractAckCallback;
 import top.ysqorz.socket.io.ReceivedCallback;
+import top.ysqorz.socket.io.packet.AckReceivedPacket;
+import top.ysqorz.socket.io.packet.FileReceivedPacket;
+import top.ysqorz.socket.io.packet.StringReceivedPacket;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -24,13 +28,18 @@ public class ClientTest {
             client.connect();
             client.setReceivedCallback(new ReceivedCallback() {
                 @Override
-                public void onTextReceived(String text) {
-                    System.out.println("[From server]: " + text);
+                public void onTextReceived(StringReceivedPacket packet) {
+                    System.out.println("[From server]: " + packet.getEntity());
                 }
 
                 @Override
-                public void onFileReceived(File file) {
-                    System.out.println("[From server]: " + file.getAbsolutePath());
+                public void onFileReceived(FileReceivedPacket packet) {
+                    System.out.println("[From server]: " + packet.getEntity().getAbsolutePath());
+                }
+
+                @Override
+                public void onAckReceived(AckReceivedPacket packet) {
+//                    System.out.println("[From server]: Ack");
                 }
             });
             BufferedReader bufReader = new BufferedReader(new InputStreamReader(System.in));
@@ -48,7 +57,17 @@ public class ClientTest {
                     break;
                 } else if (text.startsWith(TEXT_ARGS)) {
                     text = text.substring(TEXT_ARGS.length()).trim();
-                    client.sendText(text);
+                    String finalText = text;
+                    client.sendText(text, new AbstractAckCallback(-1) {
+                        @Override
+                        public void onAck() {
+                            System.out.println("消息确认送达：" + finalText);
+                        }
+
+                        @Override
+                        public void onTimeout() {
+                        }
+                    });
                 } else if (text.startsWith(FILE_ARGS)) {
                     text = text.substring(FILE_ARGS.length()).trim();
                     client.sendFile(new File(text));

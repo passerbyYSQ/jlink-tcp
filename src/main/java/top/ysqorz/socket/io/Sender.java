@@ -15,6 +15,10 @@ public interface Sender extends Closeable {
 
     void sendFile(File file);
 
+    void sendText(String text, AckCallback callback);
+
+    void sendFile(File file, AckCallback callback);
+
     /**
      * 将某个输入流直接桥接过来作为输入发送，不需要拆箱
      */

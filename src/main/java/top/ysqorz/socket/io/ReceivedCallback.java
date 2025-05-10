@@ -1,9 +1,13 @@
 package top.ysqorz.socket.io;
 
-import java.io.File;
+import top.ysqorz.socket.io.packet.AckReceivedPacket;
+import top.ysqorz.socket.io.packet.FileReceivedPacket;
+import top.ysqorz.socket.io.packet.StringReceivedPacket;
 
 public interface ReceivedCallback {
-    void onTextReceived(String text);
+    void onTextReceived(StringReceivedPacket packet);
 
-    void onFileReceived(File file);
+    void onFileReceived(FileReceivedPacket packet);
+
+    void onAckReceived(AckReceivedPacket packet);
 }

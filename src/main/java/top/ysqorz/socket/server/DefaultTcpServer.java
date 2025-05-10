@@ -1,6 +1,9 @@
 package top.ysqorz.socket.server;
 
 import top.ysqorz.socket.io.ReceivedCallback;
+import top.ysqorz.socket.io.packet.AckReceivedPacket;
+import top.ysqorz.socket.io.packet.FileReceivedPacket;
+import top.ysqorz.socket.io.packet.StringReceivedPacket;
 
 import java.io.File;
 import java.io.IOException;
@@ -79,13 +82,18 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback {
     }
 
     @Override
-    public void onTextReceived(String text) {
-        log.info("[Unknown client]: " + text); // TODO 待解决不知道是哪个客户端的问题
+    public void onTextReceived(StringReceivedPacket packet) {
+        System.out.println("[From client]: " + packet.getEntity());
     }
 
     @Override
-    public void onFileReceived(File file) {
+    public void onFileReceived(FileReceivedPacket packet) {
+        System.out.println("[From client]: " + packet.getEntity().getAbsolutePath());
+    }
 
+    @Override
+    public void onAckReceived(AckReceivedPacket packet) {
+        System.out.println("[From client]: Ack");
     }
 
     private class Acceptor extends Thread {

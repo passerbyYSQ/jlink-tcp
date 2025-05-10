@@ -9,14 +9,19 @@ import java.nio.file.Files;
  * @author yaoshiquan
  * @date 2025/5/10
  */
-public class FileSendPacket implements SendPacket<File> {
+public class FileSendPacket extends AbstractSendPacket<File> {
     private final File file;
-    private final DataOutputStream outputStream;
     private final byte[] buffer = new byte[1024];
 
     public FileSendPacket(File file, DataOutputStream outputStream) {
+        super(outputStream);
         this.file = file;
-        this.outputStream = outputStream;
+    }
+
+    @Override
+    public void send() throws IOException {
+        super.send();
+        writeFile();
     }
 
     @Override
@@ -25,26 +30,25 @@ public class FileSendPacket implements SendPacket<File> {
     }
 
     @Override
-    public void unpackEntity() throws IOException {
-        writeFileName();
-        outputStream.writeLong(file.length());
+    public byte getType() {
+        return FileReceivedPacket.FILE_TYPE;
+    }
+
+    protected void writeFile() throws IOException {
+        writeStr(file.getName());
+        getOutputStream().writeLong(file.length());
         try (InputStream inputStream = new BufferedInputStream(Files.newInputStream(file.toPath()))) {
             writeBytes(inputStream);
         }
     }
 
-    public void writeFileName() throws IOException {
-        StringSendPacket packet = new StringSendPacket(file.getName(), outputStream);
-        packet.unpackEntity();
-    }
-
-    public void writeBytes(InputStream inputStream) throws IOException {
+    protected void writeBytes(InputStream inputStream) throws IOException {
         while (true) {
             int len = inputStream.read(buffer, 0, buffer.length);
             if (len == -1) {
                 break;
             }
-            outputStream.write(buffer, 0, len);
+            getOutputStream().write(buffer, 0, len);
         }
     }
 }

@@ -1,13 +1,10 @@
 package top.ysqorz.socket.server;
 
+import top.ysqorz.socket.client.AbstractTcpClient;
 import top.ysqorz.socket.io.ReadHandler;
-import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.WriteHandler;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.Socket;
 
 /**
@@ -16,7 +13,7 @@ import java.net.Socket;
  * @author yaoshiquan
  * @date 2025/5/9
  */
-public class DefaultClientHandler implements ClientHandler {
+public class DefaultClientHandler extends AbstractTcpClient implements ClientHandler {
     private final ClientInfo clientInfo;
     private final Socket socket;
     private final ReadHandler readHandler;
@@ -36,35 +33,17 @@ public class DefaultClientHandler implements ClientHandler {
     }
 
     @Override
-    public void sendText(String text) {
-        writeHandler.sendText(text);
+    protected Socket getSocket() {
+        return socket;
     }
 
     @Override
-    public void sendFile(File file) {
-        writeHandler.sendFile(file);
+    protected ReadHandler getReadHandler() {
+        return readHandler;
     }
 
     @Override
-    public void setReceivedCallback(ReceivedCallback callback) {
-        readHandler.setReceivedCallback(callback);
+    protected WriteHandler getWriteHandler() {
+        return writeHandler;
     }
-
-    @Override
-    public void bridge(OutputStream outputStream) {
-
-    }
-
-    @Override
-    public void bridge(InputStream inputStream) {
-
-    }
-
-    @Override
-    public void close() throws IOException {
-        socket.close();
-        readHandler.close();
-        writeHandler.close();
-    }
-
 }
