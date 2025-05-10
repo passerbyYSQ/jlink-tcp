@@ -64,6 +64,13 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback {
     }
 
     @Override
+    public void broadcast(File file) {
+        for (ClientHandler client : clientHandlerMap.values()) {
+            client.sendFile(file);
+        }
+    }
+
+    @Override
     public void close() throws IOException {
         for (String clientId : clientHandlerMap.keySet()) {
             removeClient(clientId);

@@ -1,6 +1,7 @@
 package top.ysqorz.socket.server;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -20,4 +21,6 @@ public interface TcpServer extends Closeable {
     List<ClientHandler> getAllClients();
 
     void broadcast(String text);
+
+    void broadcast(File file);
 }
