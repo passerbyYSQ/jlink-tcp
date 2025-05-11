@@ -20,7 +20,7 @@ public abstract class AbstractAckCallback implements AckCallback {
     }
 
     @Override
-    public int getTimeout() {
+    public int getRttTimeout() {
         return timeout;
     }
 }

@@ -1,6 +1,7 @@
 package top.ysqorz.socket.server;
 
 import top.ysqorz.socket.io.ReceivedCallback;
+import top.ysqorz.socket.io.packet.AbstractSendPacket;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
@@ -92,7 +93,7 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback {
     }
 
     @Override
-    public void onAckReceived(AckReceivedPacket packet) {
+    public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket, AbstractSendPacket<?> sendPacket) {
         System.out.println("[From client]: Ack");
     }
 

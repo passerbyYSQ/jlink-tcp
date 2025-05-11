@@ -4,6 +4,7 @@ import top.ysqorz.socket.client.DefaultTcpClient;
 import top.ysqorz.socket.client.TcpClient;
 import top.ysqorz.socket.io.AbstractAckCallback;
 import top.ysqorz.socket.io.ReceivedCallback;
+import top.ysqorz.socket.io.packet.AbstractSendPacket;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
@@ -38,7 +39,7 @@ public class ClientTest {
                 }
 
                 @Override
-                public void onAckReceived(AckReceivedPacket packet) {
+                public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket, AbstractSendPacket<?> sendPacket) {
 //                    System.out.println("[From server]: Ack");
                 }
             });
@@ -58,19 +59,31 @@ public class ClientTest {
                 } else if (text.startsWith(TEXT_ARGS)) {
                     text = text.substring(TEXT_ARGS.length()).trim();
                     String finalText = text;
-                    client.sendText(text, new AbstractAckCallback(-1) {
+                    client.sendText(text, new AbstractAckCallback(1) {
                         @Override
                         public void onAck() {
-                            System.out.println("消息确认送达：" + finalText);
+                            System.out.println("收到Ack：" + finalText);
                         }
 
                         @Override
                         public void onTimeout() {
+                            System.out.println("Ack超时：" + finalText);
                         }
                     });
                 } else if (text.startsWith(FILE_ARGS)) {
                     text = text.substring(FILE_ARGS.length()).trim();
-                    client.sendFile(new File(text));
+                    String finalText1 = text;
+                    client.sendFile(new File(text), new AbstractAckCallback(1) {
+                        @Override
+                        public void onAck() {
+                            System.out.println("收到Ack：" + finalText1);
+                        }
+
+                        @Override
+                        public void onTimeout() {
+                            System.out.println("Ack超时：" + finalText1);
+                        }
+                    });
                 }
             }
         }

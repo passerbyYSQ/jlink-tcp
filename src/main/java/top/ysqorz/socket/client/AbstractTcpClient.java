@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -19,25 +20,40 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public abstract class AbstractTcpClient implements Sender, Receiver {
     private final Map<String, Ack<?, ?>> ackMap = new ConcurrentHashMap<>();
+    private final AckCallback NO_TIMEOUT = new AbstractAckCallback(-1) {
+        @Override
+        public void onAck() {
+        }
+
+        @Override
+        public void onTimeout() {
+        }
+    };
 
     @Override
     public void sendText(String text) {
-        getWriteHandler().sendText(text);
+        sendText(text, NO_TIMEOUT);
     }
 
     @Override
     public void sendFile(File file) {
-        getWriteHandler().sendFile(file);
+        sendFile(file, NO_TIMEOUT);
     }
 
     @Override
     public void sendText(String text, AckCallback callback) {
         StringSendPacket packet = getWriteHandler().sendText(text);
-        ackMap.put(packet.getId(), new Ack<>(packet, callback));
+        addAck(packet, callback);
     }
 
     @Override
     public void sendFile(File file, AckCallback callback) {
+        FileSendPacket packet = getWriteHandler().sendFile(file);
+        addAck(packet, callback);
+    }
+
+    private void addAck(AbstractSendPacket<?> sendPacket, AckCallback callback) {
+        ackMap.put(sendPacket.getId(), new Ack<>(sendPacket, callback));
     }
 
     @Override
@@ -65,6 +81,7 @@ public abstract class AbstractTcpClient implements Sender, Receiver {
     private static class Ack<P extends AbstractSendPacket<T>, T> {
         P sendPacket;
         AckCallback callback;
+        AckReceivedPacket ackPacket;
 
         Ack(P sendPacket, AckCallback callback) {
             this.sendPacket = sendPacket;
@@ -92,10 +109,27 @@ public abstract class AbstractTcpClient implements Sender, Receiver {
         }
 
         @Override
-        public void onAckReceived(AckReceivedPacket packet) {
-            Ack<?, ?> ack = ackMap.remove(packet.getPacketId());
-            ack.callback.onAck();
-            callback.onAckReceived(packet);
+        public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket, AbstractSendPacket<?> sendPacket) {
+            Ack<?, ?> ack = ackMap.remove(ackPacket.getPacketId());
+            if (Objects.isNull(ack)) { // 有可能超时从而被扫描线线程删除了，回调被扫描线程调用了
+                return;
+            }
+            ack.ackPacket = ackPacket;
+            isTimeout = checkTimeout(ack);
+            callback.onAckReceived(isTimeout, ackPacket, ack.sendPacket);
+        }
+
+        boolean checkTimeout(Ack<?, ?> ack) {
+            // 往返时间 = 当前收到ack的时间 - 我发送数据包的时间
+            long rtt = ack.ackPacket.getReceivedTime() - ack.sendPacket.getSendTime(); // ms
+            long timout = ack.callback.getRttTimeout() * 1000L;
+            if (timout <= 0 || rtt <= timout) { // 小于0表示不超时
+                ack.callback.onAck(); // 收到Ack未超时
+                return false;
+            } else {
+                ack.callback.onTimeout(); // 注意超时也有可能收不到Ack，由扫描线程处理
+                return true;
+            }
         }
     }
 

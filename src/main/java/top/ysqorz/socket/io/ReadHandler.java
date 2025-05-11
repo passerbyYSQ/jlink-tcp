@@ -33,7 +33,7 @@ public class ReadHandler extends Thread implements Closeable {
                     case Packet.ACK_TYPE:
                         AckReceivedPacket ackPacket = new AckReceivedPacket(inputStream);
                         if (Objects.nonNull(callback)) {
-                            callback.onAckReceived(ackPacket);
+                            callback.onAckReceived(false, ackPacket, null);
                         }
                         break;
                     case Packet.STRING_TYPE:

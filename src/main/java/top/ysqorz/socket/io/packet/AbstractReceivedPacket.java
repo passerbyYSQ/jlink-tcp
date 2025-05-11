@@ -13,9 +13,11 @@ import java.nio.charset.StandardCharsets;
 public abstract class AbstractReceivedPacket<T> implements Packet<T> {
     private final DataInputStream inputStream;
     private final String id;
+    private final long receivedTime;
 
     public AbstractReceivedPacket(DataInputStream inputStream) throws IOException {
         this.inputStream = inputStream;
+        this.receivedTime = System.currentTimeMillis();
         this.id = readStr();
     }
 
@@ -29,6 +31,10 @@ public abstract class AbstractReceivedPacket<T> implements Packet<T> {
     @Override
     public String getId() {
         return id;
+    }
+
+    public long getReceivedTime() {
+        return receivedTime;
     }
 
     protected DataInputStream getInputStream() {

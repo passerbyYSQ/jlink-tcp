@@ -8,9 +8,9 @@ package top.ysqorz.socket.io;
  */
 public interface AckCallback {
     /**
-     * 超时时间，单位为秒
+     * RTT的超时时间，单位为秒。非正数表示不超时
      */
-    int getTimeout();
+    int getRttTimeout();
 
     void onAck();
 

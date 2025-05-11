@@ -14,6 +14,7 @@ import java.util.UUID;
 public abstract class AbstractSendPacket<T> implements Packet<T> {
     private final DataOutputStream outputStream;
     private final String id;
+    private long sendTime;
 
     public AbstractSendPacket(DataOutputStream outputStream) {
         this.outputStream = outputStream;
@@ -21,6 +22,7 @@ public abstract class AbstractSendPacket<T> implements Packet<T> {
     }
 
     public void send() throws IOException {
+        sendTime = System.currentTimeMillis();
         writeStr(id);
     }
 
@@ -37,6 +39,10 @@ public abstract class AbstractSendPacket<T> implements Packet<T> {
     @Override
     public String getId() {
         return id;
+    }
+
+    public long getSendTime() {
+        return sendTime;
     }
 
     protected DataOutputStream getOutputStream() {
