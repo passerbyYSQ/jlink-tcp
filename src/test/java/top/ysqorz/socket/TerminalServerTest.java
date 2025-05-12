@@ -1,7 +1,7 @@
 package top.ysqorz.socket;
 
-import top.ysqorz.socket.server.DefaultTcpServer;
 import top.ysqorz.socket.server.TcpServer;
+import top.ysqorz.socket.server.TerminalTcpServer;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,12 +15,11 @@ import static top.ysqorz.socket.Constant.TEXT_ARGS;
  * ...
  *
  * @author yaoshiquan
- * @date 2025/5/9
+ * @date 2025/5/12
  */
-public class ServerTest {
-
+public class TerminalServerTest {
     public static void main(String[] args) throws IOException {
-        try (TcpServer server = new DefaultTcpServer(9090)) {
+        try (TcpServer server = new TerminalTcpServer(9090)) {
             server.setup(true); // 异步启动
             BufferedReader bufReader = new BufferedReader(new InputStreamReader(System.in));
             while(true) {

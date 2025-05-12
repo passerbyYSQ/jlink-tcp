@@ -56,7 +56,7 @@ public abstract class AbstractTcpClient implements Sender, Receiver {
 
     @Override
     public void bridge(InputStream inputStream) {
-
+        getWriteHandler().bridge(inputStream);
     }
 
     @Override
@@ -66,7 +66,7 @@ public abstract class AbstractTcpClient implements Sender, Receiver {
 
     @Override
     public void bridge(OutputStream outputStream) {
-
+        getReadHandler().bridge(outputStream);
     }
 
     @Override
@@ -121,14 +121,14 @@ public abstract class AbstractTcpClient implements Sender, Receiver {
         }
 
         @Override
-        public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket, AbstractSendPacket<?> sendPacket) {
-            Ack<?, ?> ack = ackMap.remove(ackPacket.getPacketId());
-            if (Objects.isNull(ack)) { // 有可能超时从而被扫描线线程删除了，回调被扫描线程调用了
+        public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket) {
+            Ack<?, ?> ack = ackMap.remove(ackPacket.getSendPacketId());
+            if (Objects.isNull(ack)) { // 有可能超时从而被扫描线线程删除了，回调被扫描线程调用了 TODO 待实现扫描线程
                 return;
             }
             ack.ackPacket = ackPacket;
             isTimeout = checkTimeout(ack);
-            callback.onAckReceived(isTimeout, ackPacket, ack.sendPacket);
+            callback.onAckReceived(isTimeout, ackPacket);
         }
 
         boolean checkTimeout(Ack<?, ?> ack) {

@@ -4,7 +4,6 @@ import top.ysqorz.socket.client.DefaultTcpClient;
 import top.ysqorz.socket.client.TcpClient;
 import top.ysqorz.socket.io.AbstractAckCallback;
 import top.ysqorz.socket.io.ReceivedCallback;
-import top.ysqorz.socket.io.packet.AbstractSendPacket;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
@@ -39,7 +38,7 @@ public class ClientTest {
                 }
 
                 @Override
-                public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket, AbstractSendPacket<?> sendPacket) {
+                public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket) {
 //                    System.out.println("[From server]: Ack");
                 }
             });

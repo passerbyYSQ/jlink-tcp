@@ -1,5 +1,7 @@
 package top.ysqorz.socket.io.packet;
 
+import top.ysqorz.socket.common.IoUtils;
+
 import java.io.*;
 import java.nio.file.Files;
 import java.util.UUID;
@@ -11,7 +13,7 @@ import java.util.UUID;
  * @date 2025/5/9
  */
 public class FileReceivedPacket extends AbstractReceivedPacket<File> {
-    private final byte[] buffer = new byte[1024];
+    private final byte[] buffer = new byte[IoUtils.BUFFER_SIZE];
     private final File file;
 
     public FileReceivedPacket(DataInputStream inputStream) throws IOException {

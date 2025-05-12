@@ -11,4 +11,6 @@ import top.ysqorz.socket.io.Sender;
  */
 public interface ClientHandler extends Sender, Receiver {
     ClientInfo getClientInfo();
+
+    void start();
 }

@@ -14,7 +14,7 @@ public class AckReceivedPacket extends StringReceivedPacket {
         super(inputStream);
     }
 
-    public String getPacketId() {
+    public String getSendPacketId() {
         return getEntity();
     }
 

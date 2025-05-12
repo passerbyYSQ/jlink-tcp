@@ -25,7 +25,6 @@ public class DefaultClientHandler extends AbstractTcpClient implements ClientHan
         this.socket = socket;
         this.clientInfo = new ClientInfo(socket);
         this.readHandler = new ReadHandler("Client-Read-Handler", socket.getInputStream());
-        readHandler.start();
         this.writeHandler = new WriteHandler("Client-Write-Handler", socket.getOutputStream());
     }
 
@@ -37,6 +36,11 @@ public class DefaultClientHandler extends AbstractTcpClient implements ClientHan
     @Override
     public ClientInfo getClientInfo() {
         return clientInfo;
+    }
+
+    @Override
+    public void start() {
+        readHandler.start();
     }
 
     @Override

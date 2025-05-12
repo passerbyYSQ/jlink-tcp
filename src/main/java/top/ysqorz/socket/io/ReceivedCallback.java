@@ -1,6 +1,5 @@
 package top.ysqorz.socket.io;
 
-import top.ysqorz.socket.io.packet.AbstractSendPacket;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
@@ -10,5 +9,5 @@ public interface ReceivedCallback {
 
     void onFileReceived(FileReceivedPacket packet);
 
-    void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket, AbstractSendPacket<?> sendPacket);
+    void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket);
 }

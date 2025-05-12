@@ -66,7 +66,6 @@ public class DefaultTcpClient extends AbstractTcpClient implements TcpClient, Ex
     public void onExceptionCaught(Exception ex) {
         try {
             close();
-            System.out.println(11111);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

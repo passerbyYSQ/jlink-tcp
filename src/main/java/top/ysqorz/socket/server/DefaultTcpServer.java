@@ -3,7 +3,6 @@ package top.ysqorz.socket.server;
 import top.ysqorz.socket.io.ClientException;
 import top.ysqorz.socket.io.ExceptionHandler;
 import top.ysqorz.socket.io.ReceivedCallback;
-import top.ysqorz.socket.io.packet.AbstractSendPacket;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
@@ -99,7 +98,7 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
     }
 
     @Override
-    public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket, AbstractSendPacket<?> sendPacket) {
+    public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket) {
         System.out.println("[From client]: Ack");
     }
 
@@ -117,6 +116,15 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
         }
     }
 
+    /**
+     * 接收到新客户端时的回调，允许子类重写以接入对新客户端的处理逻辑
+     */
+    protected void onClientAccept(ClientHandler handler) throws IOException {
+        handler.setReceivedCallback(DefaultTcpServer.this); // 注册对所有客户端的监听
+        handler.start(); // 注册完监听后才启动
+        handler.sendText("[From server]: Successfully accept " + handler.getClientInfo().toString()); // 启动后回送消息
+    }
+
     private class Acceptor extends Thread {
         Acceptor(String name) throws SocketException {
             super(name);
@@ -130,15 +138,16 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
                 try {
                     Socket socket = serverSocket.accept();
                     DefaultClientHandler clientHandler = new DefaultClientHandler(socket);
-                    clientHandler.setReceivedCallback(DefaultTcpServer.this); // 注册对所有客户端的监听
-                    clientHandler.setExceptionHandler(DefaultTcpServer.this);
                     ClientInfo clientInfo = clientHandler.getClientInfo();
                     clientHandlerMap.put(clientInfo.getClientId(), clientHandler);
                     log.info(String.format("Client count: %d. Accept client: %s", clientHandlerMap.size(), clientInfo));
+                    clientHandler.setExceptionHandler(DefaultTcpServer.this);
+                    onClientAccept(clientHandler);
                 } catch (SocketTimeoutException ignored) {
                     // 超时未等待到连接
-                } catch (IOException e) {
-                    log.severe(e.getMessage());
+                } catch (Exception ex) {
+                    log.severe(ex.getMessage());
+                    onExceptionCaught(ex);
                     break;
                 }
             }

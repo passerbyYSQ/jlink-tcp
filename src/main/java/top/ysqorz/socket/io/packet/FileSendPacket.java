@@ -1,5 +1,7 @@
 package top.ysqorz.socket.io.packet;
 
+import top.ysqorz.socket.common.IoUtils;
+
 import java.io.*;
 import java.nio.file.Files;
 
@@ -11,7 +13,7 @@ import java.nio.file.Files;
  */
 public class FileSendPacket extends AbstractSendPacket<File> {
     private final File file;
-    private final byte[] buffer = new byte[1024];
+    private final byte[] buffer = new byte[IoUtils.BUFFER_SIZE]; // 8KB缓冲区
 
     public FileSendPacket(File file, DataOutputStream outputStream) {
         super(outputStream);
