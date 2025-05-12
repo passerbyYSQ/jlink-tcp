@@ -19,11 +19,16 @@ public abstract class AbstractSendPacket<T> implements Packet<T> {
     public AbstractSendPacket(DataOutputStream outputStream) {
         this.outputStream = outputStream;
         this.id = generateUUID();
+        sendTime = System.currentTimeMillis(); // 用于发送时优先级队列按照发送时间升序
     }
 
     public void send() throws IOException {
-        sendTime = System.currentTimeMillis();
+        sendTime = System.currentTimeMillis(); // 线程池真正发送时，修正发送时间，以便后面准确计算Ack是否超时
         writeStr(id);
+    }
+
+    public void flush() throws IOException {
+        outputStream.flush();
     }
 
     protected void writeStr(String str) throws IOException {

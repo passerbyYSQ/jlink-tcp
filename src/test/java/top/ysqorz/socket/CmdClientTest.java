@@ -2,19 +2,14 @@ package top.ysqorz.socket;
 
 import top.ysqorz.socket.client.DefaultTcpClient;
 import top.ysqorz.socket.client.TcpClient;
-import top.ysqorz.socket.io.AbstractAckCallback;
 import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-
-import static top.ysqorz.socket.Constant.FILE_ARGS;
-import static top.ysqorz.socket.Constant.TEXT_ARGS;
 
 /**
  * ...
@@ -22,18 +17,18 @@ import static top.ysqorz.socket.Constant.TEXT_ARGS;
  * @author yaoshiquan
  * @date 2025/5/9
  */
-public class ClientTest {
+public class CmdClientTest {
     public static void main(String[] args) throws IOException, InterruptedException {
         try (TcpClient client = new DefaultTcpClient("127.0.0.1", 9090)) {
             client.setReceivedCallback(new ReceivedCallback() {
                 @Override
                 public void onTextReceived(StringReceivedPacket packet) {
-                    System.out.println("[From server]: " + packet.getEntity());
+                    System.out.print(packet.getEntity());
                 }
 
                 @Override
                 public void onFileReceived(FileReceivedPacket packet) {
-                    System.out.println("[From server]: " + packet.getEntity().getAbsolutePath());
+                    System.out.print(packet.getEntity().getAbsolutePath());
                 }
 
                 @Override
@@ -55,34 +50,8 @@ public class ClientTest {
                 // 退出客户端
                 if ("exit".equalsIgnoreCase(text)) {
                     break;
-                } else if (text.startsWith(TEXT_ARGS)) {
-                    text = text.substring(TEXT_ARGS.length()).trim();
-                    String finalText = text;
-                    client.sendText(text, new AbstractAckCallback(1) {
-                        @Override
-                        public void onAck() {
-                            System.out.println("收到Ack：" + finalText);
-                        }
-
-                        @Override
-                        public void onTimeout() {
-                            System.out.println("Ack超时：" + finalText);
-                        }
-                    });
-                } else if (text.startsWith(FILE_ARGS)) {
-                    text = text.substring(FILE_ARGS.length()).trim();
-                    String finalText1 = text;
-                    client.sendFile(new File(text), new AbstractAckCallback(1) {
-                        @Override
-                        public void onAck() {
-                            System.out.println("收到Ack：" + finalText1);
-                        }
-
-                        @Override
-                        public void onTimeout() {
-                            System.out.println("Ack超时：" + finalText1);
-                        }
-                    });
+                } else {
+                    client.sendText(text);
                 }
             }
         }

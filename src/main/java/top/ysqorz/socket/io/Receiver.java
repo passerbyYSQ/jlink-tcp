@@ -1,7 +1,6 @@
 package top.ysqorz.socket.io;
 
 import java.io.Closeable;
-import java.io.OutputStream;
 
 /**
  * ...
@@ -10,10 +9,12 @@ import java.io.OutputStream;
  * @date 2025/5/10
  */
 public interface Receiver extends Closeable {
+    /**
+     * 接收者必须拆分出启动动作，因为最好在start之前注册监听
+     */
+    void start();
+
     void setReceivedCallback(ReceivedCallback callback);
 
-    /**
-     * 将接收到的字节直接桥接到一个输出流，不需要装箱
-     */
-    void bridge(OutputStream outputStream);
+    void setExceptionHandler(ExceptionHandler handler);
 }

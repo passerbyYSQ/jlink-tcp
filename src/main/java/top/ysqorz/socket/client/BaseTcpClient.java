@@ -5,8 +5,6 @@ import top.ysqorz.socket.io.packet.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Map;
 import java.util.Objects;
@@ -18,11 +16,38 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author yaoshiquan
  * @date 2025/5/10
  */
-public abstract class AbstractTcpClient implements Sender, Receiver {
+public class BaseTcpClient implements Sender, Receiver {
     private final static AckCallback NO_TIMEOUT = new NoTimeoutAckCallback();
 
+    private final Socket socket;
+    private final ReadHandler readHandler;
+    private final WriteHandler writeHandler;
     private final Map<String, Ack<?, ?>> ackMap = new ConcurrentHashMap<>();
 
+    public BaseTcpClient(Socket socket) throws IOException {
+        this.socket = socket;
+        this.readHandler = new ReadHandler("Client-Read-Handler", socket.getInputStream());
+        this.writeHandler = new WriteHandler("Client-Write-Handler", socket.getOutputStream());
+    }
+
+    @Override
+    public void start() {
+        readHandler.start();
+    }
+
+    protected Socket getSocket() {
+        return socket;
+    }
+
+    protected ReadHandler getReadHandler() {
+        return readHandler;
+    }
+
+    protected WriteHandler getWriteHandler() {
+        return writeHandler;
+    }
+
+    @Override
     public void setExceptionHandler(ExceptionHandler handler) {
         getWriteHandler().setExceptionHandler(handler);
         getReadHandler().setExceptionHandler(handler);
@@ -55,18 +80,8 @@ public abstract class AbstractTcpClient implements Sender, Receiver {
     }
 
     @Override
-    public void bridge(InputStream inputStream) {
-        getWriteHandler().bridge(inputStream);
-    }
-
-    @Override
     public void setReceivedCallback(ReceivedCallback callback) {
         getReadHandler().setReceivedCallback(new AckReceivedCallback(callback));
-    }
-
-    @Override
-    public void bridge(OutputStream outputStream) {
-        getReadHandler().bridge(outputStream);
     }
 
     @Override
@@ -144,10 +159,4 @@ public abstract class AbstractTcpClient implements Sender, Receiver {
             }
         }
     }
-
-    protected abstract Socket getSocket();
-
-    protected abstract ReadHandler getReadHandler();
-
-    protected abstract WriteHandler getWriteHandler();
 }

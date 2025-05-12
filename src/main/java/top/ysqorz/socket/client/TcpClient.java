@@ -3,8 +3,6 @@ package top.ysqorz.socket.client;
 import top.ysqorz.socket.io.Receiver;
 import top.ysqorz.socket.io.Sender;
 
-import java.io.IOException;
-
 /**
  * ...
  *
@@ -12,5 +10,5 @@ import java.io.IOException;
  * @date 2025/5/9
  */
 public interface TcpClient extends Sender, Receiver {
-    void connect() throws IOException;
+    // TODO 重连
 }

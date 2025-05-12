@@ -120,9 +120,7 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
      * 接收到新客户端时的回调，允许子类重写以接入对新客户端的处理逻辑
      */
     protected void onClientAccept(ClientHandler handler) throws IOException {
-        handler.setReceivedCallback(DefaultTcpServer.this); // 注册对所有客户端的监听
-        handler.start(); // 注册完监听后才启动
-        handler.sendText("[From server]: Successfully accept " + handler.getClientInfo().toString()); // 启动后回送消息
+        handler.sendText("Successfully accept " + handler.getClientInfo().toString()); // 启动后回送消息
     }
 
     private class Acceptor extends Thread {
@@ -141,8 +139,11 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
                     ClientInfo clientInfo = clientHandler.getClientInfo();
                     clientHandlerMap.put(clientInfo.getClientId(), clientHandler);
                     log.info(String.format("Client count: %d. Accept client: %s", clientHandlerMap.size(), clientInfo));
-                    clientHandler.setExceptionHandler(DefaultTcpServer.this);
-                    onClientAccept(clientHandler);
+                    clientHandler.setExceptionHandler(DefaultTcpServer.this); // 注册异常处理器
+                    clientHandler.setReceivedCallback(DefaultTcpServer.this); // 注册消息监听
+                    clientHandler.start();
+                    // 一定要注册监听后才启动线程
+                    onClientAccept(clientHandler); // 回调客户端连接事件
                 } catch (SocketTimeoutException ignored) {
                     // 超时未等待到连接
                 } catch (Exception ex) {

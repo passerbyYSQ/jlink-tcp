@@ -2,7 +2,6 @@ package top.ysqorz.socket.io;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.InputStream;
 
 /**
  * ...
@@ -19,8 +18,5 @@ public interface Sender extends Closeable {
 
     void sendFile(File file, AckCallback callback);
 
-    /**
-     * 将某个输入流直接桥接过来作为输入发送，不需要拆箱
-     */
-    void bridge(InputStream inputStream);
+    void setExceptionHandler(ExceptionHandler handler);
 }

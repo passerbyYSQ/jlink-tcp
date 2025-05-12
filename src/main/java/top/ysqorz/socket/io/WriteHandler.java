@@ -1,10 +1,8 @@
 package top.ysqorz.socket.io;
 
-import top.ysqorz.socket.common.IoUtils;
 import top.ysqorz.socket.io.packet.*;
 
 import java.io.*;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -17,7 +15,6 @@ public class WriteHandler implements Closeable {
     private final DataOutputStream outputStream;
     private final ExecutorService executor; // 单线程发送
     private ExceptionHandler exceptionHandler;
-    private InputStream inputStream;
 
     public WriteHandler(String name, OutputStream outputStream) {
         this.executor = new ThreadPoolExecutor(
@@ -34,35 +31,20 @@ public class WriteHandler implements Closeable {
         this.exceptionHandler = handler;
     }
 
-    public void bridge(InputStream inputStream) {
-        this.inputStream = inputStream;
-        executor.execute(new BridgeTask());
-    }
-
     public void sendAck(AbstractReceivedPacket<?> packet) {
-        checkBridged();
-        executor.execute(new SendTask<>(new AckSendPacket(packet, outputStream)));
+        executor.execute(new SendTask(new AckSendPacket(packet, outputStream)));
     }
 
     public StringSendPacket sendText(String text) {
-        checkBridged();
         StringSendPacket packet = new StringSendPacket(text, outputStream);
-        executor.execute(new SendTask<>(packet));
+        executor.execute(new SendTask(packet));
         return packet;
     }
 
     public FileSendPacket sendFile(File file) {
-        checkBridged();
         FileSendPacket packet = new FileSendPacket(file, outputStream);
-        executor.execute(new SendTask<>(packet));
+        executor.execute(new SendTask(packet));
         return packet;
-    }
-
-    private void checkBridged() {
-        if (Objects.nonNull(inputStream)) {
-            throw new RuntimeException("The specified input stream has been bridged to " +
-                    "the socket's output stream, so the physical message cannot be sent");
-        }
     }
 
     @Override
@@ -71,22 +53,10 @@ public class WriteHandler implements Closeable {
         executor.shutdownNow();
     }
 
-    private class BridgeTask implements Runnable {
-        @Override
-        public void run() {
-            try {
-                IoUtils.copy(inputStream, outputStream);
-            } catch (Exception ex) {
-                log.severe(ex.getMessage());
-                exceptionHandler.onExceptionCaught(ex); // 可能是socket连接异常
-            }
-        }
-    }
+    private class SendTask implements Runnable, Comparable<SendTask> {
+        AbstractSendPacket<?> sendPacket;
 
-    private class SendTask<P extends AbstractSendPacket<T>, T> implements Runnable, Comparable<P> {
-       P sendPacket;
-
-        SendTask(P sendPacket) {
+        SendTask(AbstractSendPacket<?> sendPacket) {
             this.sendPacket = sendPacket;
         }
 
@@ -95,15 +65,30 @@ public class WriteHandler implements Closeable {
             try {
                 outputStream.writeByte(sendPacket.getType());
                 sendPacket.send();
+                sendPacket.flush();
             } catch (Exception ex) {
                 log.severe(ex.getMessage());
                 exceptionHandler.onExceptionCaught(ex); // 可能是socket连接异常
             }
         }
 
+        byte getType() {
+            return sendPacket.getType();
+        }
+
+        long getSendTime() {
+            return sendPacket.getSendTime();
+        }
+
         @Override
-        public int compareTo(P other) {
-            return Byte.compare(sendPacket.getType(), other.getType()); // type越小，包越轻量，优先小包发送
+        public int compareTo(SendTask other) {
+            if (getType() != other.getType()) {
+                // type越小，包越轻量，优先小包发送。因为有可能大文件在发送过程中，会导致后面的Ack包超时。除非将包拆细
+                // 或者，文件传输和文本传输，使用不同的长连接
+                return Byte.compare(getType(), other.getType());
+            } else {
+                return Long.compare(getSendTime(), other.getSendTime()); // 类型相同的包，按照发送时间升序发送
+            }
         }
     }
 }
