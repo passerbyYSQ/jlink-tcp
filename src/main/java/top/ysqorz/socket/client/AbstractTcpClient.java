@@ -19,16 +19,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * @date 2025/5/10
  */
 public abstract class AbstractTcpClient implements Sender, Receiver {
-    private final Map<String, Ack<?, ?>> ackMap = new ConcurrentHashMap<>();
-    private final AckCallback NO_TIMEOUT = new AbstractAckCallback(-1) {
-        @Override
-        public void onAck() {
-        }
+    private final static AckCallback NO_TIMEOUT = new NoTimeoutAckCallback();
 
-        @Override
-        public void onTimeout() {
-        }
-    };
+    private final Map<String, Ack<?, ?>> ackMap = new ConcurrentHashMap<>();
+
+    public void setExceptionHandler(ExceptionHandler handler) {
+        getWriteHandler().setExceptionHandler(handler);
+        getReadHandler().setExceptionHandler(handler);
+    }
 
     @Override
     public void sendText(String text) {
@@ -76,6 +74,20 @@ public abstract class AbstractTcpClient implements Sender, Receiver {
         getSocket().close();
         getReadHandler().close();
         getWriteHandler().close();
+    }
+
+    private static class NoTimeoutAckCallback extends AbstractAckCallback {
+        public NoTimeoutAckCallback() {
+            super(-1);
+        }
+
+        @Override
+        public void onAck() {
+        }
+
+        @Override
+        public void onTimeout() {
+        }
     }
 
     private static class Ack<P extends AbstractSendPacket<T>, T> {

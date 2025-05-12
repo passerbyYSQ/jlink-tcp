@@ -14,6 +14,7 @@ public class ReadHandler extends Thread implements Closeable {
 
     private final DataInputStream inputStream;
     private ReceivedCallback callback;
+    private ExceptionHandler exceptionHandler;
 
     public ReadHandler(String name, InputStream inputStream) {
         super(name);
@@ -22,6 +23,10 @@ public class ReadHandler extends Thread implements Closeable {
 
     public void setReceivedCallback(ReceivedCallback callback) {
         this.callback = callback;
+    }
+
+    public void setExceptionHandler(ExceptionHandler handler) {
+        this.exceptionHandler = handler;
     }
 
     @Override
@@ -49,10 +54,11 @@ public class ReadHandler extends Thread implements Closeable {
                         }
                         break;
                     default:
-                        throw new IOException("Unknown type: " + type);  // TODO 外面的Map中未移除ClientHandler
+                        throw new IOException("Unknown type: " + type);
                 }
-            } catch (IOException ex) {
+            } catch (Exception ex) {
                 log.severe(ex.getMessage());
+                exceptionHandler.onExceptionCaught(ex); // 可能是socket连接异常
                 break;
             }
         }

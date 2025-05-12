@@ -1,5 +1,7 @@
 package top.ysqorz.socket.server;
 
+import top.ysqorz.socket.io.ClientException;
+import top.ysqorz.socket.io.ExceptionHandler;
 import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.packet.AbstractSendPacket;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
@@ -13,6 +15,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
@@ -21,11 +24,11 @@ import java.util.logging.Logger;
  * @author yaoshiquan
  * @date 2025/5/9
  */
-public class DefaultTcpServer implements TcpServer, ReceivedCallback {
+public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionHandler {
     private static final Logger log = Logger.getLogger(DefaultTcpServer.class.getName());
     private final int port;
     private ServerSocket serverSocket;
-    private final Map<String, ClientHandler> clientHandlerMap = new HashMap<>();
+    private final Map<String, ClientHandler> clientHandlerMap = new ConcurrentHashMap<>();
 
     public DefaultTcpServer(int port) {
         this.port = port;
@@ -46,6 +49,9 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback {
     @Override
     public void removeClient(String clientId) throws IOException {
         ClientHandler handler = clientHandlerMap.remove(clientId);
+        if (Objects.isNull(handler)) {
+            return;
+        }
         handler.close();
         log.info(String.format("Client count: %d. Remove client: %s", clientHandlerMap.size(), handler.getClientInfo()));
     }
@@ -97,6 +103,20 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback {
         System.out.println("[From client]: Ack");
     }
 
+    @Override
+    public void onExceptionCaught(Exception ex) {
+        try {
+            if (ex instanceof ClientException) {
+                ClientException clientEx = (ClientException) ex;
+                removeClient(clientEx.getClientInfo().getClientId());
+            } else {
+                close();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private class Acceptor extends Thread {
         Acceptor(String name) throws SocketException {
             super(name);
@@ -111,6 +131,7 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback {
                     Socket socket = serverSocket.accept();
                     DefaultClientHandler clientHandler = new DefaultClientHandler(socket);
                     clientHandler.setReceivedCallback(DefaultTcpServer.this); // 注册对所有客户端的监听
+                    clientHandler.setExceptionHandler(DefaultTcpServer.this);
                     ClientInfo clientInfo = clientHandler.getClientInfo();
                     clientHandlerMap.put(clientInfo.getClientId(), clientHandler);
                     log.info(String.format("Client count: %d. Accept client: %s", clientHandlerMap.size(), clientInfo));

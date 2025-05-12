@@ -1,6 +1,8 @@
 package top.ysqorz.socket.server;
 
 import top.ysqorz.socket.client.AbstractTcpClient;
+import top.ysqorz.socket.io.ClientException;
+import top.ysqorz.socket.io.ExceptionHandler;
 import top.ysqorz.socket.io.ReadHandler;
 import top.ysqorz.socket.io.WriteHandler;
 
@@ -28,6 +30,11 @@ public class DefaultClientHandler extends AbstractTcpClient implements ClientHan
     }
 
     @Override
+    public void setExceptionHandler(ExceptionHandler handler) {
+        super.setExceptionHandler(new ClientExceptionHandler(handler));
+    }
+
+    @Override
     public ClientInfo getClientInfo() {
         return clientInfo;
     }
@@ -45,5 +52,18 @@ public class DefaultClientHandler extends AbstractTcpClient implements ClientHan
     @Override
     protected WriteHandler getWriteHandler() {
         return writeHandler;
+    }
+
+    private class ClientExceptionHandler implements ExceptionHandler {
+        ExceptionHandler handler;
+
+        ClientExceptionHandler(ExceptionHandler handler) {
+            this.handler = handler;
+        }
+
+        @Override
+        public void onExceptionCaught(Exception ex) {
+            handler.onExceptionCaught(new ClientException(getClientInfo(), ex));
+        }
     }
 }

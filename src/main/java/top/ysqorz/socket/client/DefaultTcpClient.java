@@ -1,5 +1,6 @@
 package top.ysqorz.socket.client;
 
+import top.ysqorz.socket.io.ExceptionHandler;
 import top.ysqorz.socket.io.ReadHandler;
 import top.ysqorz.socket.io.WriteHandler;
 
@@ -14,7 +15,7 @@ import java.util.logging.Logger;
  * @author yaoshiquan
  * @date 2025/5/9
  */
-public class DefaultTcpClient extends AbstractTcpClient implements TcpClient {
+public class DefaultTcpClient extends AbstractTcpClient implements TcpClient, ExceptionHandler {
     private static final Logger log = Logger.getLogger(DefaultTcpClient.class.getName());
     private final String host;
     private final int port;
@@ -34,6 +35,7 @@ public class DefaultTcpClient extends AbstractTcpClient implements TcpClient {
         this.readHandler = new ReadHandler("Client-Read-Handler", socket.getInputStream());
         readHandler.start();
         this.writeHandler = new WriteHandler("Client-Write-Handler", socket.getOutputStream());
+        setExceptionHandler(this);
     }
 
     private void checkConnected() {
@@ -58,5 +60,15 @@ public class DefaultTcpClient extends AbstractTcpClient implements TcpClient {
     protected WriteHandler getWriteHandler() {
         checkConnected();
         return writeHandler;
+    }
+
+    @Override
+    public void onExceptionCaught(Exception ex) {
+        try {
+            close();
+            System.out.println(11111);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

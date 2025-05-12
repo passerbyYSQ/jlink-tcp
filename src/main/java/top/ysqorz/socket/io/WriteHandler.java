@@ -14,6 +14,7 @@ public class WriteHandler implements Closeable {
 
     private final DataOutputStream outputStream;
     private final ExecutorService executor; // 单线程发送
+    private ExceptionHandler exceptionHandler;
 
     public WriteHandler(String name, OutputStream outputStream) {
         this.executor = new ThreadPoolExecutor(
@@ -24,6 +25,10 @@ public class WriteHandler implements Closeable {
                 runnable -> new Thread(runnable, name)
         );
         this.outputStream = new DataOutputStream(outputStream);
+    }
+
+    public void setExceptionHandler(ExceptionHandler handler) {
+        this.exceptionHandler = handler;
     }
 
     public void sendAck(AbstractReceivedPacket<?> packet) {
@@ -60,8 +65,9 @@ public class WriteHandler implements Closeable {
             try {
                 outputStream.writeByte(sendPacket.getType());
                 sendPacket.send();
-            } catch (IOException e) {
-                log.severe(e.getMessage()); // TODO 外面的Map中未移除ClientHandler
+            } catch (Exception ex) {
+                log.severe(ex.getMessage());
+                exceptionHandler.onExceptionCaught(ex); // 可能是socket连接异常
             }
         }
 
