@@ -1,6 +1,6 @@
 package top.ysqorz.socket.io.packet;
 
-import top.ysqorz.socket.common.IoUtils;
+import top.ysqorz.socket.io.IoUtils;
 
 import java.io.*;
 import java.nio.file.Files;

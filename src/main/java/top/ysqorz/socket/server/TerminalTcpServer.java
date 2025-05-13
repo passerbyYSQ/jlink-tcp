@@ -54,7 +54,6 @@ public class TerminalTcpServer extends DefaultTcpServer {
                     int read;
                     while ((read = reader.read(buffer)) != -1) {  // 阻塞等待可用数据
                         String str = new String(buffer, 0, read);
-                        Thread.sleep(1); // 使发送时间不一致，以便按发送时间升序发送
                         handler.sendText(str);
                     }
                 } catch (Exception ex) {

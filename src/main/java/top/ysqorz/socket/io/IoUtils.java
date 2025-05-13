@@ -1,4 +1,4 @@
-package top.ysqorz.socket.common;
+package top.ysqorz.socket.io;
 
 import java.io.IOException;
 import java.io.InputStream;

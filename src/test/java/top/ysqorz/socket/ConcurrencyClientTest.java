@@ -35,8 +35,7 @@ public class ConcurrencyClientTest {
                 }
             });
             client.start();
-            for (int i = 0; i < 4; i++) {
-                Thread.sleep(1);
+            for (int i = 0; i < 10; i++) {
                 client.sendText("test-" + i);
             }
             Thread.sleep(1000 * 60 * 10);
