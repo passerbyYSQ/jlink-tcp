@@ -6,9 +6,13 @@ import top.ysqorz.socket.io.packet.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * ...
@@ -23,11 +27,22 @@ public class BaseTcpClient implements Sender, Receiver {
     private final ReadHandler readHandler;
     private final WriteHandler writeHandler;
     private final Map<String, Ack<?, ?>> ackMap = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService ackTimeoutScanner;
 
     public BaseTcpClient(Socket socket) throws IOException {
+        this(socket, Executors.newSingleThreadScheduledExecutor());
+    }
+
+    public BaseTcpClient(Socket socket, ScheduledExecutorService ackTimeoutScanner) throws IOException {
         this.socket = socket;
         this.readHandler = new ReadHandler("Client-Read-Handler", socket.getInputStream());
         this.writeHandler = new WriteHandler("Client-Write-Handler", socket.getOutputStream());
+        this.ackTimeoutScanner = ackTimeoutScanner;
+        ackTimeoutScanner.schedule(new CheckAckTimeoutTask(getAckTimeoutCheckInterval()), 0, TimeUnit.MILLISECONDS);
+    }
+
+    protected long getAckTimeoutCheckInterval() {
+        return 1000L; // 1秒;
     }
 
     @Override
@@ -105,7 +120,7 @@ public class BaseTcpClient implements Sender, Receiver {
         }
     }
 
-    private static class Ack<P extends AbstractSendPacket<T>, T> {
+    private static class Ack<P extends AbstractSendPacket<T>, T> implements AckCallback {
         P sendPacket;
         AckCallback callback;
         AckReceivedPacket ackPacket;
@@ -113,6 +128,53 @@ public class BaseTcpClient implements Sender, Receiver {
         Ack(P sendPacket, AckCallback callback) {
             this.sendPacket = sendPacket;
             this.callback = callback;
+        }
+
+        @Override
+        public int getRttTimeout() {
+            return callback.getRttTimeout();
+        }
+
+        @Override
+        public void onAck() {
+            callback.onAck();
+        }
+
+        @Override
+        public void onTimeout() {
+            callback.onTimeout();
+        }
+
+        /**
+         * 往返时间 = 当前收到ack的时间 - 我发送数据包的时间
+         */
+        long getRtt() {
+            if (Objects.isNull(ackPacket)) { // 尚未收到Ack包
+                return System.currentTimeMillis() - sendPacket.getSendTime();
+            } else {
+                return ackPacket.getReceivedTime() - sendPacket.getSendTime();
+            }
+        }
+
+        boolean isTimeout() {
+            long timout = getRttTimeout() * 1000L; // 秒转为毫秒
+            if (timout <= 0) { // 非正数表示没有超时
+                return false;
+            }
+            long rtt = getRtt(); // ms
+            System.out.println("Rtt:" + rtt + " ms");
+            System.out.println("timout:" + timout + " ms");
+            return rtt > timout;
+        }
+
+        boolean checkTimeout() {
+            if (isTimeout()) {
+                onTimeout(); // 注意超时也有可能收不到Ack，由扫描线程处理
+                return true;
+            } else {
+                onAck(); // 收到Ack未超时
+                return false;
+            }
         }
     }
 
@@ -138,25 +200,56 @@ public class BaseTcpClient implements Sender, Receiver {
         @Override
         public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket) {
             Ack<?, ?> ack = ackMap.remove(ackPacket.getSendPacketId());
-            if (Objects.isNull(ack)) { // 有可能超时从而被扫描线线程删除了，回调被扫描线程调用了 TODO 待实现扫描线程
-                return;
+            if (Objects.isNull(ack)) { // 被扫描线线程发现超时，然后删除了，超时回调被扫描线程已经调用了。此时才收到Ack
+                callback.onAckReceived(true, ackPacket);
+            } else {
+                ack.ackPacket = ackPacket;
+                callback.onAckReceived(ack.checkTimeout(), ackPacket);
             }
-            ack.ackPacket = ackPacket;
-            isTimeout = checkTimeout(ack);
-            callback.onAckReceived(isTimeout, ackPacket);
+        }
+    }
+
+    private class CheckAckTimeoutTask implements Runnable {
+        long lastCheckTime;
+        long delayMillis;
+
+        public CheckAckTimeoutTask(long delayMillis) {
+            this(-1, delayMillis);
         }
 
-        boolean checkTimeout(Ack<?, ?> ack) {
-            // 往返时间 = 当前收到ack的时间 - 我发送数据包的时间
-            long rtt = ack.ackPacket.getReceivedTime() - ack.sendPacket.getSendTime(); // ms
-            long timout = ack.callback.getRttTimeout() * 1000L;
-            if (timout <= 0 || rtt <= timout) { // 小于0表示不超时
-                ack.callback.onAck(); // 收到Ack未超时
-                return false;
-            } else {
-                ack.callback.onTimeout(); // 注意超时也有可能收不到Ack，由扫描线程处理
-                return true;
+        public CheckAckTimeoutTask(long lastCheckTime, long delayMillis) {
+            this.lastCheckTime = lastCheckTime;
+            this.delayMillis = delayMillis;
+        }
+
+        @Override
+        public void run() {
+            int count = 0;
+//            System.out.println("当前扫描的时间：" + System.currentTimeMillis());
+            Iterator<Map.Entry<String, Ack<?, ?>>> iterator = ackMap.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<String, Ack<?, ?>> entry = iterator.next();
+                Ack<?, ?> ack = entry.getValue();
+                if (Objects.isNull(ack)) { // 可能被接收线程移除掉了
+                    continue;
+                }
+                if (ack.isTimeout()) {
+                    iterator.remove(); // 移除掉，防止接收线程重复处理
+                    ack.onTimeout();
+                    count++;
+                }
             }
+            // 下一次检查
+            long now = System.currentTimeMillis();
+            if (lastCheckTime <= 0) { // 第一次执行
+                lastCheckTime = now;
+            }
+            long expectedNextCheckTime = lastCheckTime + delayMillis;
+            long correctedDelayMillis = Math.max(0, expectedNextCheckTime - now); // 负数表示立马执行
+            if (correctedDelayMillis == 0 && count == 0) {
+                correctedDelayMillis = getAckTimeoutCheckInterval(); // 当没有超时处理的ACK，重新恢复正常的检查间隔
+            }
+            ackTimeoutScanner.schedule(new CheckAckTimeoutTask(now, correctedDelayMillis), correctedDelayMillis, TimeUnit.MILLISECONDS);
         }
     }
 }

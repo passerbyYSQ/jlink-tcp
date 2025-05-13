@@ -17,7 +17,7 @@ import static top.ysqorz.socket.Constant.FILE_ARGS;
 import static top.ysqorz.socket.Constant.TEXT_ARGS;
 
 /**
- * ...
+ * --file D:\EXE\2025-05-13\ZwTeamWork\ZWTeammate-1.6.0-windows-x86_64-20250513.exe
  *
  * @author yaoshiquan
  * @date 2025/5/9
@@ -38,7 +38,7 @@ public class ClientTest {
 
                 @Override
                 public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket) {
-//                    System.out.println("[From server]: Ack");
+                    System.out.println("[From server]: Ack, IsTimeout: " + isTimeout);
                 }
             });
             client.start();
@@ -72,7 +72,7 @@ public class ClientTest {
                 } else if (text.startsWith(FILE_ARGS)) {
                     text = text.substring(FILE_ARGS.length()).trim();
                     String finalText1 = text;
-                    client.sendFile(new File(text), new AbstractAckCallback(1) {
+                    client.sendFile(new File(text), new AbstractAckCallback(2) {
                         @Override
                         public void onAck() {
                             System.out.println("收到Ack：" + finalText1);

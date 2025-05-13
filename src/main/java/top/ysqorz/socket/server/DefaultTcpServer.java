@@ -15,6 +15,8 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.logging.Logger;
 
 /**
@@ -28,6 +30,7 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
     private final int port;
     private ServerSocket serverSocket;
     private final Map<String, ClientHandler> clientHandlerMap = new ConcurrentHashMap<>();
+    private ScheduledExecutorService ackTimeoutScanner;
 
     public DefaultTcpServer(int port) {
         this.port = port;
@@ -36,6 +39,7 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
     @Override
     public void setup(boolean async) throws IOException {
         serverSocket = new ServerSocket(port);
+        ackTimeoutScanner = Executors.newSingleThreadScheduledExecutor();
         log.info("Tcp server started in " + port);
         Acceptor acceptor = new Acceptor("Tcp-Client-Acceptor");
         if (async) {
@@ -135,7 +139,7 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
             while (true) {
                 try {
                     Socket socket = serverSocket.accept();
-                    DefaultClientHandler clientHandler = new DefaultClientHandler(socket);
+                    DefaultClientHandler clientHandler = new DefaultClientHandler(socket, ackTimeoutScanner); // 所有客户端处理器共用一个Ack超时扫描线程
                     ClientInfo clientInfo = clientHandler.getClientInfo();
                     clientHandlerMap.put(clientInfo.getClientId(), clientHandler);
                     log.info(String.format("Client count: %d. Accept client: %s", clientHandlerMap.size(), clientInfo));

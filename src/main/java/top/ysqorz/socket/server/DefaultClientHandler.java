@@ -6,6 +6,7 @@ import top.ysqorz.socket.io.ExceptionHandler;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * ...
@@ -16,8 +17,8 @@ import java.net.Socket;
 public class DefaultClientHandler extends BaseTcpClient implements ClientHandler {
     private final ClientInfo clientInfo;
 
-    public DefaultClientHandler(Socket socket) throws IOException {
-        super(socket);
+    public DefaultClientHandler(Socket socket, ScheduledExecutorService ackTimeoutScanner) throws IOException {
+        super(socket, ackTimeoutScanner);
         this.clientInfo = new ClientInfo(socket);
     }
 
