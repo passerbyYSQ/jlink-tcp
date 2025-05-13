@@ -1,82 +1,100 @@
 package top.ysqorz.socket.server;
 
+import top.ysqorz.socket.io.ExceptionHandler;
 import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
 
 import java.io.*;
+import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * TODO 待优化代码
- *
  * @author yaoshiquan
  * @date 2025/5/12
  */
 public class TerminalTcpServer extends DefaultTcpServer {
+    private final Charset charset;
 
-
-    public TerminalTcpServer(int port) {
+    public TerminalTcpServer(int port, Charset charset) {
         super(port);
+        this.charset = charset;
     }
 
     @Override
     protected void onClientAccept(ClientHandler handler) throws IOException {
-        Process process = startTerminal();
-        final ExecutorService executor = Executors.newSingleThreadExecutor();
-        try {
-            PrintWriter printer = new PrintWriter(new OutputStreamWriter(process.getOutputStream(), "GBK"));
-            handler.setReceivedCallback(new ReceivedCallback() {
-                @Override
-                public void onTextReceived(StringReceivedPacket packet) {
-                    printer.println(packet.getEntity());
-                    printer.flush(); // 必须冲刷缓冲区
-                }
+        new Terminal(handler);
+    }
 
-                @Override
-                public void onFileReceived(FileReceivedPacket packet) {
-                }
+    private class Terminal implements Closeable, ExceptionHandler, ReceivedCallback, Runnable {
+        ClientHandler handler;
+        Process process;
+        PrintWriter writer;
+        ExecutorService executor;
 
-                @Override
-                public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket) {
+        Terminal(ClientHandler handler) throws IOException {
+            this.handler = handler;
+            this.process = startTerminal();
+            this.writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), charset)));
+            this.executor = Executors.newSingleThreadExecutor();
+            handler.setReceivedCallback(this);
+            handler.setExceptionHandler(this);
+            executor.execute(this);
+        }
+
+        @Override
+        public void run() {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), charset))) {
+                char[] buffer = new char[1024];  // 更大的缓冲区
+                int read;
+                while ((read = reader.read(buffer)) != -1) {  // 阻塞等待可用数据
+                    handler.sendText(new String(buffer, 0, read));
                 }
-            });
-            handler.setExceptionHandler(ex -> {
-                TerminalTcpServer.this.onExceptionCaught(ex);
-                process.destroyForcibly();
-                executor.shutdownNow();
-            });
-            executor.execute(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), "GBK"))) {
-                    char[] buffer = new char[1024];  // 更大的缓冲区
-                    int read;
-                    while ((read = reader.read(buffer)) != -1) {  // 阻塞等待可用数据
-                        String str = new String(buffer, 0, read);
-                        handler.sendText(str);
-                    }
-                } catch (Exception ex) {
-                    throw new RuntimeException(ex.getMessage());
-                }
-            });
-        } catch (Exception ex) {
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+
+        Process startTerminal() throws IOException {
+            String os = System.getProperty("os.name").toLowerCase();
+            String[] args;
+            if (os.contains("win")) {
+                args = new String[]{"cmd.exe"};
+            } else {
+                throw new UnsupportedOperationException("Unsupported OS");
+            }
+            ProcessBuilder processBuilder = new ProcessBuilder(args);
+            processBuilder.redirectErrorStream(true);
+            // 启动一个终端进程
+            return processBuilder.start();
+        }
+
+        @Override
+        public void close() {
             process.destroyForcibly();
             executor.shutdownNow();
         }
-    }
 
-    public Process startTerminal() throws IOException {
-        String os = System.getProperty("os.name").toLowerCase();
-        String[] args;
-        if (os.contains("win")) {
-            args = new String[]{"cmd.exe"};
-        } else {
-            throw new UnsupportedOperationException("Unsupported OS");
+        @Override
+        public void onExceptionCaught(Exception ex) {
+            TerminalTcpServer.this.onExceptionCaught(ex); // 移除并关闭当前handler
+            close(); // 关闭当前终端资源
         }
-        ProcessBuilder processBuilder = new ProcessBuilder(args);
-        processBuilder.redirectErrorStream(true);
-        // 启动一个终端进程
-        return processBuilder.start();
+
+        @Override
+        public void onTextReceived(StringReceivedPacket packet) {
+            writer.println(packet.getEntity());
+            writer.flush(); // 必须冲刷缓冲区
+        }
+
+        @Override
+        public void onFileReceived(FileReceivedPacket packet) {
+        }
+
+        @Override
+        public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket) {
+        }
     }
 }
