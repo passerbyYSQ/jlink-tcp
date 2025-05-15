@@ -60,12 +60,12 @@ public class ClientTest {
                     String finalText = text;
                     client.sendText(text, new AbstractAckCallback(1) {
                         @Override
-                        public void onAck() {
+                        public void onAck(long cost) {
                             System.out.println("收到Ack：" + finalText);
                         }
 
                         @Override
-                        public void onTimeout() {
+                        public void onTimeout(long cost, boolean receivedAck) {
                             System.out.println("Ack超时：" + finalText);
                         }
                     });
@@ -74,13 +74,15 @@ public class ClientTest {
                     String finalText1 = text;
                     client.sendFile(new File(text), new AbstractAckCallback(2) {
                         @Override
-                        public void onAck() {
-                            System.out.println("收到Ack：" + finalText1);
+                        public void onAck(long cost) {
+                            System.out.println("线程名称：" +  Thread.currentThread().getName());
+                            System.out.println("收到Ack：" + finalText1 + ", cost " + cost + " ms");
                         }
 
                         @Override
-                        public void onTimeout() {
-                            System.out.println("Ack超时：" + finalText1);
+                        public void onTimeout(long cost, boolean receivedAck) {
+                            System.out.println("线程名称：" +  Thread.currentThread().getName());
+                            System.out.println("Ack超时：" + finalText1 + ", cost " + cost + " ms");
                         }
                     });
                 }

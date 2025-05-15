@@ -13,7 +13,7 @@ public class AckSendPacket extends StringSendPacket {
         super(packet.getId(), outputStream);
     }
 
-    public String getPacketId() {
+    public String getSendPacketId() {
         return getEntity();
     }
 

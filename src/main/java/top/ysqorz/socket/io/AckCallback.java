@@ -12,7 +12,7 @@ public interface AckCallback {
      */
     int getRttTimeout();
 
-    void onAck();
+    void onAck(long cost);
 
-    void onTimeout();
+    void onTimeout(long cost, boolean receivedAck);
 }

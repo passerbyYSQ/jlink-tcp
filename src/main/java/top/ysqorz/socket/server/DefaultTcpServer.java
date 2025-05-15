@@ -2,6 +2,7 @@ package top.ysqorz.socket.server;
 
 import top.ysqorz.socket.io.ClientException;
 import top.ysqorz.socket.io.ExceptionHandler;
+import top.ysqorz.socket.io.NamedThreadFactory;
 import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
@@ -39,8 +40,8 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
     @Override
     public void setup(boolean async) throws IOException {
         serverSocket = new ServerSocket(port);
-        ackTimeoutScanner = Executors.newSingleThreadScheduledExecutor();
-        log.info("Tcp server started in " + port);
+        ackTimeoutScanner = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Ack-Timeout-Scanner"));
+        log.info("Tcp server started at " + port);
         Acceptor acceptor = new Acceptor("Tcp-Client-Acceptor");
         if (async) {
             acceptor.start();

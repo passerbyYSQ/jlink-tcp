@@ -23,8 +23,8 @@ public class WriteHandler implements Closeable {
                 1, // 核心线程数 = 1
                 1, // 最大线程数 = 1
                 0L, TimeUnit.MILLISECONDS,
-                new PriorityBlockingQueue<>(), // 优先级队列
-                runnable -> new Thread(runnable, name)
+                new PriorityBlockingQueue<>(), // 优先级队列，不同的包有优先级
+                new NamedThreadFactory(name)
         );
         this.outputStream = new DataOutputStream(outputStream);
     }

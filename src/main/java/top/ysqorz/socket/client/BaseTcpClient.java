@@ -30,15 +30,21 @@ public class BaseTcpClient implements Sender, Receiver {
     private final ScheduledExecutorService ackTimeoutScanner;
 
     public BaseTcpClient(Socket socket) throws IOException {
-        this(socket, Executors.newSingleThreadScheduledExecutor());
+        this(socket, Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Ack-Timeout-Scanner")));
     }
 
     public BaseTcpClient(Socket socket, ScheduledExecutorService ackTimeoutScanner) throws IOException {
         this.socket = socket;
-        this.readHandler = new ReadHandler("Client-Read-Handler", socket.getInputStream());
-        this.writeHandler = new WriteHandler("Client-Write-Handler", socket.getOutputStream());
+        this.readHandler = new ReadHandler(getThreadName("Client-Read-Handler"), socket.getInputStream());
+        this.writeHandler = new WriteHandler(getThreadName("Client-Write-Handler"), socket.getOutputStream());
         this.ackTimeoutScanner = ackTimeoutScanner;
         ackTimeoutScanner.schedule(new CheckAckTimeoutTask(getAckTimeoutCheckInterval()), 0, TimeUnit.MILLISECONDS);
+    }
+
+    protected String getThreadName(String prefix) {
+        String remoteIp = socket.getInetAddress().getHostAddress();
+        int remotePort = socket.getPort();
+        return prefix + "-" + remoteIp + ":" + remotePort;
     }
 
     protected long getAckTimeoutCheckInterval() {
@@ -112,37 +118,31 @@ public class BaseTcpClient implements Sender, Receiver {
         }
 
         @Override
-        public void onAck() {
+        public void onAck(long rtt) {
         }
 
         @Override
-        public void onTimeout() {
+        public void onTimeout(long rtt, boolean receivedAck) {
         }
     }
 
-    private static class Ack<P extends AbstractSendPacket<T>, T> implements AckCallback {
+    private static class Ack<P extends AbstractSendPacket<T>, T> {
         P sendPacket;
         AckCallback callback;
         AckReceivedPacket ackPacket;
+        long rtt;
 
         Ack(P sendPacket, AckCallback callback) {
             this.sendPacket = sendPacket;
             this.callback = callback;
         }
 
-        @Override
-        public int getRttTimeout() {
-            return callback.getRttTimeout();
+        void onAck() {
+            callback.onAck(rtt);
         }
 
-        @Override
-        public void onAck() {
-            callback.onAck();
-        }
-
-        @Override
-        public void onTimeout() {
-            callback.onTimeout();
+        void onTimeout(boolean receivedAck) {
+            callback.onTimeout(rtt, receivedAck);
         }
 
         /**
@@ -157,24 +157,12 @@ public class BaseTcpClient implements Sender, Receiver {
         }
 
         boolean isTimeout() {
-            long timout = getRttTimeout() * 1000L; // 秒转为毫秒
+            this.rtt = getRtt(); // ms
+            long timout = callback.getRttTimeout() * 1000L; // 秒转为毫秒
             if (timout <= 0) { // 非正数表示没有超时
                 return false;
             }
-            long rtt = getRtt(); // ms
-            System.out.println("Rtt:" + rtt + " ms");
-            System.out.println("timout:" + timout + " ms");
             return rtt > timout;
-        }
-
-        boolean checkTimeout() {
-            if (isTimeout()) {
-                onTimeout(); // 注意超时也有可能收不到Ack，由扫描线程处理
-                return true;
-            } else {
-                onAck(); // 收到Ack未超时
-                return false;
-            }
         }
     }
 
@@ -204,7 +192,13 @@ public class BaseTcpClient implements Sender, Receiver {
                 callback.onAckReceived(true, ackPacket);
             } else {
                 ack.ackPacket = ackPacket;
-                callback.onAckReceived(ack.checkTimeout(), ackPacket);
+                isTimeout = ack.isTimeout();
+                if (isTimeout) {
+                    ack.onTimeout(true);
+                } else {
+                    ack.onAck();
+                }
+                callback.onAckReceived(isTimeout, ackPacket);
             }
         }
     }
@@ -225,7 +219,6 @@ public class BaseTcpClient implements Sender, Receiver {
         @Override
         public void run() {
             int count = 0;
-//            System.out.println("当前扫描的时间：" + System.currentTimeMillis());
             Iterator<Map.Entry<String, Ack<?, ?>>> iterator = ackMap.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry<String, Ack<?, ?>> entry = iterator.next();
@@ -235,7 +228,7 @@ public class BaseTcpClient implements Sender, Receiver {
                 }
                 if (ack.isTimeout()) {
                     iterator.remove(); // 移除掉，防止接收线程重复处理
-                    ack.onTimeout();
+                    ack.onTimeout(false);
                     count++;
                 }
             }
