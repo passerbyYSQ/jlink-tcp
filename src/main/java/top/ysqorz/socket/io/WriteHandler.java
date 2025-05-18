@@ -1,6 +1,8 @@
 package top.ysqorz.socket.io;
 
 import top.ysqorz.socket.io.packet.*;
+import top.ysqorz.socket.log.Logger;
+import top.ysqorz.socket.log.LoggerFactory;
 
 import java.io.*;
 import java.util.concurrent.ExecutorService;
@@ -8,10 +10,9 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
 
 public class WriteHandler implements Closeable {
-    private static final Logger log = Logger.getLogger(WriteHandler.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(WriteHandler.class);
 
     private final DataOutputStream outputStream;
     private final ExecutorService executor; // 单线程发送
@@ -71,7 +72,7 @@ public class WriteHandler implements Closeable {
                 sendPacket.send();
                 sendPacket.flush();
             } catch (Exception ex) {
-                log.severe(ex.getMessage());
+                log.error("Encountered an exception while writing content to the output stream of the socket", ex);
                 exceptionHandler.onExceptionCaught(ex); // 可能是socket连接异常
             }
         }

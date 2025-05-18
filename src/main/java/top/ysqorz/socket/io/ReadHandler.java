@@ -11,10 +11,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 import java.util.concurrent.*;
-import java.util.logging.Logger;
+
+import top.ysqorz.socket.log.Logger;
+import top.ysqorz.socket.log.LoggerFactory;
 
 public class ReadHandler implements Closeable, Runnable {
-    private static final Logger log = Logger.getLogger(ReadHandler.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(ReadHandler.class);
 
     private final DataInputStream inputStream;
     private final ExecutorService executor; // 单线程发送
@@ -77,7 +79,7 @@ public class ReadHandler implements Closeable, Runnable {
                         throw new IOException("Unknown type: " + type);
                 }
             } catch (Exception ex) {
-                log.severe(ex.getMessage());
+                log.error("Encountered an exception while reading the input stream of the socket", ex);
                 exceptionHandler.onExceptionCaught(ex); // 可能是socket连接异常
                 break;
             }

@@ -7,6 +7,8 @@ import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
+import top.ysqorz.socket.log.Logger;
+import top.ysqorz.socket.log.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,16 +20,15 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.logging.Logger;
 
 /**
- * ... TODO 文件/心跳检测/送达确认/日志
+ * ... TODO 心跳检测/日志
  *
  * @author yaoshiquan
  * @date 2025/5/9
  */
 public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionHandler {
-    private static final Logger log = Logger.getLogger(DefaultTcpServer.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(DefaultTcpServer.class);
     private final int port;
     private ServerSocket serverSocket;
     private final Map<String, ClientHandler> clientHandlerMap = new ConcurrentHashMap<>();
@@ -152,7 +153,7 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
                 } catch (SocketTimeoutException ignored) {
                     // 超时未等待到连接
                 } catch (Exception ex) {
-                    log.severe(ex.getMessage());
+                    log.error("Encountered an exception while waiting for a new client connection", ex);
                     onExceptionCaught(ex);
                     break;
                 }

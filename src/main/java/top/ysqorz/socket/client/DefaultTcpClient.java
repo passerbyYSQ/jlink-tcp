@@ -1,10 +1,11 @@
 package top.ysqorz.socket.client;
 
 import top.ysqorz.socket.io.ExceptionHandler;
+import top.ysqorz.socket.log.Logger;
+import top.ysqorz.socket.log.LoggerFactory;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.logging.Logger;
 
 /**
  * ...
@@ -13,7 +14,7 @@ import java.util.logging.Logger;
  * @date 2025/5/9
  */
 public class DefaultTcpClient extends BaseTcpClient implements TcpClient, ExceptionHandler {
-    private static final Logger log = Logger.getLogger(DefaultTcpClient.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(DefaultTcpClient.class);
 
     public DefaultTcpClient(String host, int port) throws IOException {
         super(new Socket(host, port));

@@ -23,7 +23,7 @@ import static top.ysqorz.socket.Constant.TEXT_ARGS;
  * @date 2025/5/9
  */
 public class ClientTest {
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException {
         try (TcpClient client = new DefaultTcpClient("127.0.0.1", 9090)) {
             client.setReceivedCallback(new ReceivedCallback() {
                 @Override
