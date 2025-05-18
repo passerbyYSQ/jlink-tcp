@@ -15,11 +15,16 @@ import java.net.Socket;
  */
 public class DefaultTcpClient extends BaseTcpClient implements TcpClient, ExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(DefaultTcpClient.class);
-
     public DefaultTcpClient(String host, int port) throws IOException {
         super(new Socket(host, port));
         log.info(String.format("Connected to server %s:%d", host, port));
         setExceptionHandler(this);
+    }
+
+    @Override
+    public void close() throws IOException {
+        super.close();
+        getAckTimeoutScanner().shutdownNow();
     }
 
     @Override

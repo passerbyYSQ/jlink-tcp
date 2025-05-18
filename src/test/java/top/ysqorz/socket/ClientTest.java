@@ -4,6 +4,7 @@ import top.ysqorz.socket.client.DefaultTcpClient;
 import top.ysqorz.socket.client.TcpClient;
 import top.ysqorz.socket.io.AbstractAckCallback;
 import top.ysqorz.socket.io.ReceivedCallback;
+import top.ysqorz.socket.io.exception.AckTimeoutException;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
@@ -18,6 +19,7 @@ import static top.ysqorz.socket.Constant.TEXT_ARGS;
 
 /**
  * --file D:\EXE\2025-05-13\ZwTeamWork\ZWTeammate-1.6.0-windows-x86_64-20250513.exe
+ * --file F:\Linux\rhel-server-6.7-x86_64-dvd.iso
  *
  * @author yaoshiquan
  * @date 2025/5/9
@@ -72,19 +74,25 @@ public class ClientTest {
                 } else if (text.startsWith(FILE_ARGS)) {
                     text = text.substring(FILE_ARGS.length()).trim();
                     String finalText1 = text;
-                    client.sendFile(new File(text), new AbstractAckCallback(2) {
-                        @Override
-                        public void onAck(long cost) {
-                            System.out.println("线程名称：" +  Thread.currentThread().getName());
-                            System.out.println("收到Ack：" + finalText1 + ", cost " + cost + " ms");
-                        }
-
-                        @Override
-                        public void onTimeout(long cost, boolean receivedAck) {
-                            System.out.println("线程名称：" +  Thread.currentThread().getName());
-                            System.out.println("Ack超时：" + finalText1 + ", cost " + cost + " ms");
-                        }
-                    });
+//                    client.sendFile(new File(text), new AbstractAckCallback(-1) {
+//                        @Override
+//                        public void onAck(long cost) {
+//                            System.out.println("线程名称：" +  Thread.currentThread().getName());
+//                            System.out.println("收到Ack：" + finalText1 + ", cost " + cost + " ms");
+//                        }
+//
+//                        @Override
+//                        public void onTimeout(long cost, boolean receivedAck) {
+//                            System.out.println("线程名称：" +  Thread.currentThread().getName());
+//                            System.out.println("Ack超时：" + finalText1 + ", cost " + cost + " ms");
+//                        }
+//                    });
+                    try {
+                        client.sendFileSyncAck(new File(text), 60);
+                        System.out.println("同步等待Ack");
+                    } catch (AckTimeoutException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }

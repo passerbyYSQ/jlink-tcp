@@ -1,4 +1,4 @@
-package top.ysqorz.socket.io;
+package top.ysqorz.socket.io.exception;
 
 import top.ysqorz.socket.server.ClientInfo;
 

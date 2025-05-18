@@ -1,7 +1,7 @@
 package top.ysqorz.socket.server;
 
 import top.ysqorz.socket.client.BaseTcpClient;
-import top.ysqorz.socket.io.ClientException;
+import top.ysqorz.socket.io.exception.ClientException;
 import top.ysqorz.socket.io.ExceptionHandler;
 
 import java.io.IOException;

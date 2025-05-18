@@ -1,7 +1,10 @@
 package top.ysqorz.socket.client;
 
 import top.ysqorz.socket.io.*;
+import top.ysqorz.socket.io.exception.AckTimeoutException;
 import top.ysqorz.socket.io.packet.*;
+import top.ysqorz.socket.log.Logger;
+import top.ysqorz.socket.log.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,10 +12,7 @@ import java.net.Socket;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * ...
@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
  * @date 2025/5/10
  */
 public class BaseTcpClient implements Sender, Receiver {
+    private static final Logger log = LoggerFactory.getLogger(BaseTcpClient.class);
     private final static AckCallback NO_TIMEOUT = new NoTimeoutAckCallback();
 
     private final Socket socket;
@@ -41,10 +42,18 @@ public class BaseTcpClient implements Sender, Receiver {
         ackTimeoutScanner.schedule(new CheckAckTimeoutTask(getAckTimeoutCheckInterval()), 0, TimeUnit.MILLISECONDS);
     }
 
-    protected String getThreadName(String prefix) {
+    protected ScheduledExecutorService getAckTimeoutScanner() {
+        return ackTimeoutScanner;
+    }
+
+    private String getThreadName(String prefix) {
+        return prefix + "-" + getHost();
+    }
+
+    private String getHost() {
         String remoteIp = socket.getInetAddress().getHostAddress();
         int remotePort = socket.getPort();
-        return prefix + "-" + remoteIp + ":" + remotePort;
+        return remoteIp + ":" + remotePort;
     }
 
     protected long getAckTimeoutCheckInterval() {
@@ -92,8 +101,25 @@ public class BaseTcpClient implements Sender, Receiver {
 
     @Override
     public void sendFile(File file, AckCallback callback) {
+        if (!file.exists() || !file.isFile()) {
+            throw new IllegalArgumentException("File not found: " + file.getAbsolutePath());
+        }
         FileSendPacket packet = getWriteHandler().sendFile(file);
         addAck(packet, callback);
+    }
+
+    @Override
+    public void sendTextSyncAck(String text, int timeout) throws AckTimeoutException {
+        ThrowableAckCallback callback = new ThrowableAckCallback(timeout);
+        sendText(text, callback);
+        callback.syncAck();
+    }
+
+    @Override
+    public void sendFileSyncAck(File file, int timeout) throws AckTimeoutException {
+        ThrowableAckCallback callback = new ThrowableAckCallback(timeout);
+        sendFile(file, callback);
+        callback.syncAck();
     }
 
     private void addAck(AbstractSendPacket<?> sendPacket, AckCallback callback) {
@@ -110,6 +136,45 @@ public class BaseTcpClient implements Sender, Receiver {
         getSocket().close();
         getReadHandler().close();
         getWriteHandler().close();
+    }
+
+    private static class ThrowableAckCallback extends AbstractAckCallback {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+
+        public ThrowableAckCallback(int timeout) {
+            super(timeout);
+        }
+
+        void syncAck() throws AckTimeoutException {
+            try {
+                future.get();
+            } catch (ExecutionException | InterruptedException ex) {
+                Throwable cause = ex.getCause();
+                if (cause instanceof AckTimeoutException) {
+                    throw (AckTimeoutException) cause;
+                }
+                throw new RuntimeException(ex);
+            }
+        }
+
+        @Override
+        public void onAck(long cost) {
+            future.complete(null);
+        }
+
+        @Override
+        public void onTimeout(long cost, boolean receivedAck) {
+            String message;
+            if (receivedAck) {
+                message = String.format("Ack has been received, but cost %.2f seconds, exceeding the limit of %d seconds",
+                        cost / (double) 1000, getRttTimeout());
+            } else {
+                message = String.format("No Ack received, and the elapsed time of %.2f seconds has exceeded the limit of %d seconds",
+                        cost / (double) 1000, getRttTimeout());
+            }
+            future.completeExceptionally(new AckTimeoutException(message));
+        }
+
     }
 
     private static class NoTimeoutAckCallback extends AbstractAckCallback {
@@ -237,12 +302,17 @@ public class BaseTcpClient implements Sender, Receiver {
             if (lastCheckTime <= 0) { // 第一次执行
                 lastCheckTime = now;
             }
+            //System.out.printf("[debug] name=%s, now=%d, dif=%d%n", getThreadName(""), now, now - lastCheckTime);
             long expectedNextCheckTime = lastCheckTime + delayMillis;
             long correctedDelayMillis = Math.max(0, expectedNextCheckTime - now); // 负数表示立马执行
             if (correctedDelayMillis == 0 && count == 0) {
                 correctedDelayMillis = getAckTimeoutCheckInterval(); // 当没有超时处理的ACK，重新恢复正常的检查间隔
             }
-            ackTimeoutScanner.schedule(new CheckAckTimeoutTask(now, correctedDelayMillis), correctedDelayMillis, TimeUnit.MILLISECONDS);
+            if (socket.isClosed()) {
+                log.info(String.format("The socket for %s has been closed, so stop scanning timeout Ack for it", getHost()));
+            } else {
+                ackTimeoutScanner.schedule(new CheckAckTimeoutTask(now, correctedDelayMillis), correctedDelayMillis, TimeUnit.MILLISECONDS);
+            }
         }
     }
 }

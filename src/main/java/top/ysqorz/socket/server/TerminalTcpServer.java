@@ -1,6 +1,7 @@
 package top.ysqorz.socket.server;
 
 import top.ysqorz.socket.io.ExceptionHandler;
+import top.ysqorz.socket.io.NamedThreadFactory;
 import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
@@ -38,7 +39,7 @@ public class TerminalTcpServer extends DefaultTcpServer {
             this.handler = handler;
             this.process = startTerminal();
             this.writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), charset)));
-            this.executor = Executors.newSingleThreadExecutor();
+            this.executor = Executors.newSingleThreadExecutor(new NamedThreadFactory("Process-Output-Forwarder"));
             handler.setReceivedCallback(this);
             handler.setExceptionHandler(this);
             executor.execute(this);

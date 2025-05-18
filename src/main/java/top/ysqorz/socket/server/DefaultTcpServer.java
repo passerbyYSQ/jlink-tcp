@@ -1,6 +1,6 @@
 package top.ysqorz.socket.server;
 
-import top.ysqorz.socket.io.ClientException;
+import top.ysqorz.socket.io.exception.ClientException;
 import top.ysqorz.socket.io.ExceptionHandler;
 import top.ysqorz.socket.io.NamedThreadFactory;
 import top.ysqorz.socket.io.ReceivedCallback;
@@ -41,7 +41,7 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
     @Override
     public void setup(boolean async) throws IOException {
         serverSocket = new ServerSocket(port);
-        ackTimeoutScanner = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Ack-Timeout-Scanner"));
+        ackTimeoutScanner = Executors.newScheduledThreadPool(2, new NamedThreadFactory("Ack-Timeout-Scanner"));
         log.info("Tcp server started at " + port);
         Acceptor acceptor = new Acceptor("Tcp-Client-Acceptor");
         if (async) {
@@ -90,7 +90,12 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
         for (String clientId : clientHandlerMap.keySet()) {
             removeClient(clientId);
         }
-        serverSocket.close();
+        if (Objects.nonNull(serverSocket)) {
+            serverSocket.close();
+        }
+        if (Objects.nonNull(ackTimeoutScanner)) {
+            ackTimeoutScanner.shutdownNow();
+        }
     }
 
     @Override
