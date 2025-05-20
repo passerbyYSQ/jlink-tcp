@@ -10,5 +10,5 @@ import top.ysqorz.socket.io.Sender;
  * @date 2025/5/9
  */
 public interface TcpClient extends Sender, Receiver {
-    // TODO 重连
+    void tryReconnect() throws InterruptedException;
 }

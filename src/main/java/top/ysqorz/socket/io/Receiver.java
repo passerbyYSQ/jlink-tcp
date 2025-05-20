@@ -17,4 +17,6 @@ public interface Receiver extends Closeable {
     void setReceivedCallback(ReceivedCallback callback);
 
     void setExceptionHandler(ExceptionHandler handler);
+
+    long getLastReadTime();
 }

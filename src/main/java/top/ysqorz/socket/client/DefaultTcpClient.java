@@ -38,7 +38,7 @@ public class DefaultTcpClient extends BaseTcpClient implements TcpClient, Except
     }
 
     @SuppressWarnings("BusyWait")
-    private void tryReconnect() throws InterruptedException {
+    public void tryReconnect() throws InterruptedException {
         if (!reconnecting.compareAndSet(false, true)) {
             return;
         }

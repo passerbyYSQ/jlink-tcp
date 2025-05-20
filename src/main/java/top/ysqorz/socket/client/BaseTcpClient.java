@@ -26,14 +26,16 @@ public class BaseTcpClient implements Sender, Receiver {
     private static final Logger log = LoggerFactory.getLogger(BaseTcpClient.class);
     private final static SendCallback NO_TIMEOUT = new NoTimeoutSendCallback();
 
-    private Socket socket;
-    private ReadHandler readHandler;
-    private WriteHandler writeHandler;
-    private ExceptionHandler exceptionHandler;
-    private ReceivedCallback receivedCallback;
     private final SocketAddress remoteSocketAddress;
     private final Map<String, Ack<?, ?>> ackMap = new ConcurrentHashMap<>();
     private final ScheduledExecutorService ackTimeoutScanner;
+    private Socket socket;
+    private ReadHandler readHandler;
+    private WriteHandler writeHandler;
+    private long lastReadTime;
+    private long lastWriteTime;
+    private ExceptionHandler exceptionHandler;
+    private ReceivedCallback receivedCallback;
 
     public BaseTcpClient(Socket socket) throws IOException {
         this(socket, Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Ack-Timeout-Scanner")));
@@ -60,9 +62,12 @@ public class BaseTcpClient implements Sender, Receiver {
         return remoteIp + ":" + remotePort;
     }
 
-    @Override
-    public void start() {
-        readHandler.start();
+    private void updateReadTime() {
+        lastReadTime = System.currentTimeMillis();
+    }
+
+    private void updateWriteTime() {
+        lastWriteTime = System.currentTimeMillis();
     }
 
     protected ScheduledExecutorService getAckTimeoutScanner() {
@@ -95,6 +100,21 @@ public class BaseTcpClient implements Sender, Receiver {
     }
 
     @Override
+    public long getLastReadTime() {
+        return lastReadTime;
+    }
+
+    @Override
+    public long getLastWriteTime() {
+        return lastWriteTime;
+    }
+
+    @Override
+    public void start() {
+        readHandler.start();
+    }
+
+    @Override
     public void setExceptionHandler(ExceptionHandler handler) {
         this.exceptionHandler = handler;
         getWriteHandler().setExceptionHandler(new SendExceptionHandler(handler));
@@ -115,6 +135,7 @@ public class BaseTcpClient implements Sender, Receiver {
     public void sendText(String text, SendCallback callback) {
         StringSendPacket packet = getWriteHandler().sendText(text);
         addAck(packet, callback);
+        updateWriteTime();
     }
 
     @Override
@@ -124,6 +145,7 @@ public class BaseTcpClient implements Sender, Receiver {
         }
         FileSendPacket packet = getWriteHandler().sendFile(file);
         addAck(packet, callback);
+        updateWriteTime();
     }
 
     @Override
@@ -275,18 +297,21 @@ public class BaseTcpClient implements Sender, Receiver {
 
         @Override
         public void onTextReceived(StringReceivedPacket packet) {
+            updateReadTime();
             getWriteHandler().sendAck(packet);
             callback.onTextReceived(packet);
         }
 
         @Override
         public void onFileReceived(FileReceivedPacket packet) {
+            updateReadTime();
             getWriteHandler().sendAck(packet);
             callback.onFileReceived(packet);
         }
 
         @Override
         public void onAckReceived(boolean isTimeout, AckReceivedPacket ackPacket) {
+            updateReadTime();
             Ack<?, ?> ack = ackMap.remove(ackPacket.getSendPacketId());
             if (Objects.isNull(ack)) { // 被扫描线线程发现超时，然后删除了，超时回调被扫描线程已经调用了。此时才收到Ack
                 callback.onAckReceived(true, ackPacket);

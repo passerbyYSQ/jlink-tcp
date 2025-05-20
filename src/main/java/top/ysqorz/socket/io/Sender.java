@@ -25,4 +25,6 @@ public interface Sender extends Closeable {
     void sendFileSyncAck(File file, int timeout) throws AckTimeoutException;
 
     void setExceptionHandler(ExceptionHandler handler);
+
+    long getLastWriteTime();
 }
