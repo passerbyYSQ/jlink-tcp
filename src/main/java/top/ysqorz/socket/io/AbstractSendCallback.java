@@ -8,14 +8,14 @@ import java.time.Duration;
  * @author yaoshiquan
  * @date 2025/5/10
  */
-public abstract class AbstractAckCallback implements AckCallback {
+public abstract class AbstractSendCallback implements SendCallback {
     private final int timeout;
 
-    public AbstractAckCallback(int timeout) {
+    public AbstractSendCallback(int timeout) {
         this.timeout = timeout;
     }
 
-    public AbstractAckCallback(Duration duration) {
+    public AbstractSendCallback(Duration duration) {
         this.timeout = (int) duration.getSeconds();
     }
 

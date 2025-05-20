@@ -2,6 +2,7 @@ package top.ysqorz.socket.client;
 
 import top.ysqorz.socket.io.*;
 import top.ysqorz.socket.io.exception.AckTimeoutException;
+import top.ysqorz.socket.io.exception.SendException;
 import top.ysqorz.socket.io.packet.*;
 import top.ysqorz.socket.log.Logger;
 import top.ysqorz.socket.log.LoggerFactory;
@@ -9,6 +10,7 @@ import top.ysqorz.socket.log.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -22,11 +24,14 @@ import java.util.concurrent.*;
  */
 public class BaseTcpClient implements Sender, Receiver {
     private static final Logger log = LoggerFactory.getLogger(BaseTcpClient.class);
-    private final static AckCallback NO_TIMEOUT = new NoTimeoutAckCallback();
+    private final static SendCallback NO_TIMEOUT = new NoTimeoutSendCallback();
 
-    private final Socket socket;
-    private final ReadHandler readHandler;
-    private final WriteHandler writeHandler;
+    private Socket socket;
+    private ReadHandler readHandler;
+    private WriteHandler writeHandler;
+    private ExceptionHandler exceptionHandler;
+    private ReceivedCallback receivedCallback;
+    private final SocketAddress remoteSocketAddress;
     private final Map<String, Ack<?, ?>> ackMap = new ConcurrentHashMap<>();
     private final ScheduledExecutorService ackTimeoutScanner;
 
@@ -36,18 +41,17 @@ public class BaseTcpClient implements Sender, Receiver {
 
     public BaseTcpClient(Socket socket, ScheduledExecutorService ackTimeoutScanner) throws IOException {
         this.socket = socket;
-        this.readHandler = new ReadHandler(getThreadName("Client-Read-Handler"), socket.getInputStream());
-        this.writeHandler = new WriteHandler(getThreadName("Client-Write-Handler"), socket.getOutputStream());
+        this.remoteSocketAddress = socket.getRemoteSocketAddress();
+        initStreamHandler();
         this.ackTimeoutScanner = ackTimeoutScanner;
         ackTimeoutScanner.schedule(new CheckAckTimeoutTask(getAckTimeoutCheckInterval()), 0, TimeUnit.MILLISECONDS);
     }
 
-    protected ScheduledExecutorService getAckTimeoutScanner() {
-        return ackTimeoutScanner;
-    }
-
-    private String getThreadName(String prefix) {
-        return prefix + "-" + getHost();
+    private void initStreamHandler() throws IOException {
+        this.readHandler = new ReadHandler("Client-Read-Handler-" + getHost(), socket.getInputStream());
+        this.writeHandler = new WriteHandler("Client-Write-Handler" + getHost(), socket.getOutputStream());
+        setExceptionHandler(exceptionHandler);
+        setReceivedCallback(receivedCallback);
     }
 
     private String getHost() {
@@ -56,13 +60,26 @@ public class BaseTcpClient implements Sender, Receiver {
         return remoteIp + ":" + remotePort;
     }
 
+    @Override
+    public void start() {
+        readHandler.start();
+    }
+
+    protected ScheduledExecutorService getAckTimeoutScanner() {
+        return ackTimeoutScanner;
+    }
+
     protected long getAckTimeoutCheckInterval() {
         return 1000L; // 1秒;
     }
 
-    @Override
-    public void start() {
-        readHandler.start();
+    protected void reconnect() throws IOException {
+        socket = new Socket();
+        socket.connect(remoteSocketAddress);
+        getReadHandler().close();
+        getWriteHandler().close();
+        initStreamHandler();
+        start();
     }
 
     protected Socket getSocket() {
@@ -79,7 +96,8 @@ public class BaseTcpClient implements Sender, Receiver {
 
     @Override
     public void setExceptionHandler(ExceptionHandler handler) {
-        getWriteHandler().setExceptionHandler(handler);
+        this.exceptionHandler = handler;
+        getWriteHandler().setExceptionHandler(new SendExceptionHandler(handler));
         getReadHandler().setExceptionHandler(handler);
     }
 
@@ -94,13 +112,13 @@ public class BaseTcpClient implements Sender, Receiver {
     }
 
     @Override
-    public void sendText(String text, AckCallback callback) {
+    public void sendText(String text, SendCallback callback) {
         StringSendPacket packet = getWriteHandler().sendText(text);
         addAck(packet, callback);
     }
 
     @Override
-    public void sendFile(File file, AckCallback callback) {
+    public void sendFile(File file, SendCallback callback) {
         if (!file.exists() || !file.isFile()) {
             throw new IllegalArgumentException("File not found: " + file.getAbsolutePath());
         }
@@ -110,24 +128,25 @@ public class BaseTcpClient implements Sender, Receiver {
 
     @Override
     public void sendTextSyncAck(String text, int timeout) throws AckTimeoutException {
-        ThrowableAckCallback callback = new ThrowableAckCallback(timeout);
+        SyncSendCallback callback = new SyncSendCallback(timeout);
         sendText(text, callback);
         callback.syncAck();
     }
 
     @Override
     public void sendFileSyncAck(File file, int timeout) throws AckTimeoutException {
-        ThrowableAckCallback callback = new ThrowableAckCallback(timeout);
+        SyncSendCallback callback = new SyncSendCallback(timeout);
         sendFile(file, callback);
         callback.syncAck();
     }
 
-    private void addAck(AbstractSendPacket<?> sendPacket, AckCallback callback) {
+    private void addAck(AbstractSendPacket<?> sendPacket, SendCallback callback) {
         ackMap.put(sendPacket.getId(), new Ack<>(sendPacket, callback));
     }
 
     @Override
     public void setReceivedCallback(ReceivedCallback callback) {
+        this.receivedCallback = callback;
         getReadHandler().setReceivedCallback(new AckReceivedCallback(callback));
     }
 
@@ -138,10 +157,31 @@ public class BaseTcpClient implements Sender, Receiver {
         getWriteHandler().close();
     }
 
-    private static class ThrowableAckCallback extends AbstractAckCallback {
+    private class SendExceptionHandler implements ExceptionHandler {
+        ExceptionHandler handler;
+
+        SendExceptionHandler(ExceptionHandler handler) {
+            this.handler = handler;
+        }
+
+        @Override
+        public void onExceptionCaught(Exception ex) {
+            if (ex instanceof SendException) {
+                SendException sendEx = (SendException) ex;
+                // 发送失败，从Map中移除
+                Ack<?, ?> ack = ackMap.remove(sendEx.getSendPacket().getId());
+                if (Objects.nonNull(ack)) {
+                    ack.onFailure(sendEx);
+                }
+            }
+            handler.onExceptionCaught(ex); // 继续往外传递
+        }
+    }
+
+    private static class SyncSendCallback extends AbstractSendCallback {
         CompletableFuture<Void> future = new CompletableFuture<>();
 
-        public ThrowableAckCallback(int timeout) {
+        public SyncSendCallback(int timeout) {
             super(timeout);
         }
 
@@ -163,22 +203,13 @@ public class BaseTcpClient implements Sender, Receiver {
         }
 
         @Override
-        public void onTimeout(long cost, boolean receivedAck) {
-            String message;
-            if (receivedAck) {
-                message = String.format("Ack has been received, but cost %.2f seconds, exceeding the limit of %d seconds",
-                        cost / (double) 1000, getRttTimeout());
-            } else {
-                message = String.format("No Ack received, and the elapsed time of %.2f seconds has exceeded the limit of %d seconds",
-                        cost / (double) 1000, getRttTimeout());
-            }
-            future.completeExceptionally(new AckTimeoutException(message));
+        public void onFailure(Exception ex) {
+            future.completeExceptionally(ex);
         }
-
     }
 
-    private static class NoTimeoutAckCallback extends AbstractAckCallback {
-        public NoTimeoutAckCallback() {
+    private static class NoTimeoutSendCallback extends AbstractSendCallback {
+        public NoTimeoutSendCallback() {
             super(-1);
         }
 
@@ -187,17 +218,17 @@ public class BaseTcpClient implements Sender, Receiver {
         }
 
         @Override
-        public void onTimeout(long rtt, boolean receivedAck) {
+        public void onFailure(Exception ex) {
         }
     }
 
     private static class Ack<P extends AbstractSendPacket<T>, T> {
         P sendPacket;
-        AckCallback callback;
+        SendCallback callback;
         AckReceivedPacket ackPacket;
         long rtt;
 
-        Ack(P sendPacket, AckCallback callback) {
+        Ack(P sendPacket, SendCallback callback) {
             this.sendPacket = sendPacket;
             this.callback = callback;
         }
@@ -207,7 +238,11 @@ public class BaseTcpClient implements Sender, Receiver {
         }
 
         void onTimeout(boolean receivedAck) {
-            callback.onTimeout(rtt, receivedAck);
+            callback.onFailure(new AckTimeoutException(rtt, callback.getRttTimeout(), receivedAck));
+        }
+
+        void onFailure(Exception ex) {
+            callback.onFailure(ex);
         }
 
         /**

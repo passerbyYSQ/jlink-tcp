@@ -1,5 +1,6 @@
 package top.ysqorz.socket.io;
 
+import top.ysqorz.socket.io.exception.SendException;
 import top.ysqorz.socket.io.packet.*;
 import top.ysqorz.socket.log.Logger;
 import top.ysqorz.socket.log.LoggerFactory;
@@ -73,7 +74,7 @@ public class WriteHandler implements Closeable {
                 sendPacket.flush();
             } catch (Exception ex) {
                 log.error("Encountered an exception while writing content to the output stream of the socket", ex);
-                exceptionHandler.onExceptionCaught(ex); // 可能是socket连接异常
+                exceptionHandler.onExceptionCaught(new SendException(sendPacket, ex)); // 可能是socket连接异常
             }
         }
 

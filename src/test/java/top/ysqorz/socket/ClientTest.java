@@ -2,7 +2,7 @@ package top.ysqorz.socket;
 
 import top.ysqorz.socket.client.DefaultTcpClient;
 import top.ysqorz.socket.client.TcpClient;
-import top.ysqorz.socket.io.AbstractAckCallback;
+import top.ysqorz.socket.io.AbstractSendCallback;
 import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.exception.AckTimeoutException;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
@@ -26,7 +26,7 @@ import static top.ysqorz.socket.Constant.TEXT_ARGS;
  */
 public class ClientTest {
     public static void main(String[] args) throws IOException {
-        try (TcpClient client = new DefaultTcpClient("127.0.0.1", 9090)) {
+        try (TcpClient client = new DefaultTcpClient("127.0.0.1", 9090, true)) {
             client.setReceivedCallback(new ReceivedCallback() {
                 @Override
                 public void onTextReceived(StringReceivedPacket packet) {
@@ -60,15 +60,17 @@ public class ClientTest {
                 } else if (text.startsWith(TEXT_ARGS)) {
                     text = text.substring(TEXT_ARGS.length()).trim();
                     String finalText = text;
-                    client.sendText(text, new AbstractAckCallback(1) {
+                    client.sendText(text, new AbstractSendCallback(-1) {
                         @Override
                         public void onAck(long cost) {
                             System.out.println("收到Ack：" + finalText);
                         }
 
                         @Override
-                        public void onTimeout(long cost, boolean receivedAck) {
-                            System.out.println("Ack超时：" + finalText);
+                        public void onFailure(Exception ex) {
+                            if (ex instanceof AckTimeoutException) {
+                                System.out.println("Ack超时：" + finalText);
+                            }
                         }
                     });
                 } else if (text.startsWith(FILE_ARGS)) {

@@ -16,9 +16,9 @@ public interface Sender extends Closeable {
 
     void sendFile(File file);
 
-    void sendText(String text, AckCallback callback);
+    void sendText(String text, SendCallback callback);
 
-    void sendFile(File file, AckCallback callback);
+    void sendFile(File file, SendCallback callback);
 
     void sendTextSyncAck(String text, int timeout) throws AckTimeoutException;
 

@@ -11,11 +11,6 @@ import top.ysqorz.socket.server.ClientInfo;
 public class ClientException extends RuntimeException {
     private final ClientInfo clientInfo;
 
-    public ClientException(ClientInfo clientInfo, String message) {
-        super(message);
-        this.clientInfo = clientInfo;
-    }
-
     public ClientException(ClientInfo clientInfo, Exception ex) {
         super(ex);
         this.clientInfo = clientInfo;
