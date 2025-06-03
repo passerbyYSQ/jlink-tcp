@@ -28,7 +28,7 @@ public class CmdClientTest {
 
                 @Override
                 public void onFileReceived(FileReceivedPacket packet) {
-                    System.out.print(packet.getEntity().getAbsolutePath());
+                    System.out.print(packet.getEntity().getFile().getAbsolutePath());
                 }
 
                 @Override

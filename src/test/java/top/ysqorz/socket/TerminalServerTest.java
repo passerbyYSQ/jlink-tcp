@@ -1,5 +1,6 @@
 package top.ysqorz.socket;
 
+import top.ysqorz.socket.io.packet.FileDescriptor;
 import top.ysqorz.socket.server.TcpServer;
 import top.ysqorz.socket.server.TerminalTcpServer;
 
@@ -40,7 +41,7 @@ public class TerminalServerTest {
                     server.broadcast(text);
                 } else if (text.startsWith(FILE_ARGS)) {
                     text = text.substring(FILE_ARGS.length()).trim();
-                    server.broadcast(new File(text));
+                    server.broadcast(new FileDescriptor(new File(text)));
                 }
             }
         }

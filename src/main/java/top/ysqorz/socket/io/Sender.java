@@ -1,9 +1,9 @@
 package top.ysqorz.socket.io;
 
 import top.ysqorz.socket.io.exception.AckTimeoutException;
+import top.ysqorz.socket.io.packet.FileDescriptor;
 
 import java.io.Closeable;
-import java.io.File;
 
 /**
  * ...
@@ -14,15 +14,15 @@ import java.io.File;
 public interface Sender extends Closeable {
     void sendText(String text);
 
-    void sendFile(File file);
+    void sendFile(FileDescriptor fileDescriptor);
 
     void sendText(String text, SendCallback callback);
 
-    void sendFile(File file, SendCallback callback);
+    void sendFile(FileDescriptor fileDescriptor, SendCallback callback);
 
     void sendTextSyncAck(String text, int timeout) throws AckTimeoutException;
 
-    void sendFileSyncAck(File file, int timeout) throws AckTimeoutException;
+    void sendFileSyncAck(FileDescriptor fileDescriptor, int timeout) throws AckTimeoutException;
 
     void setExceptionHandler(ExceptionHandler handler);
 

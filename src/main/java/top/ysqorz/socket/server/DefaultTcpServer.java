@@ -5,12 +5,12 @@ import top.ysqorz.socket.io.NamedThreadFactory;
 import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.exception.ClientException;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
+import top.ysqorz.socket.io.packet.FileDescriptor;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
 import top.ysqorz.socket.log.Logger;
 import top.ysqorz.socket.log.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -81,9 +81,9 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
     }
 
     @Override
-    public void broadcast(File file) {
+    public void broadcast(FileDescriptor fileDescriptor) {
         for (ClientHandler client : clientHandlerMap.values()) {
-            client.sendFile(file);
+            client.sendFile(fileDescriptor);
         }
     }
 
@@ -107,7 +107,9 @@ public class DefaultTcpServer implements TcpServer, ReceivedCallback, ExceptionH
 
     @Override
     public void onFileReceived(FileReceivedPacket packet) {
-        System.out.println("[From client]: " + packet.getEntity().getAbsolutePath());
+        FileDescriptor fileDescriptor = packet.getEntity();
+        System.out.println("[From client]: " + fileDescriptor.getFile().getAbsolutePath() +
+                ". Original file name: " + fileDescriptor.getOriginalFileName());
     }
 
     @Override

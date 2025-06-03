@@ -6,6 +6,7 @@ import top.ysqorz.socket.io.AbstractSendCallback;
 import top.ysqorz.socket.io.ReceivedCallback;
 import top.ysqorz.socket.io.exception.AckTimeoutException;
 import top.ysqorz.socket.io.packet.AckReceivedPacket;
+import top.ysqorz.socket.io.packet.FileDescriptor;
 import top.ysqorz.socket.io.packet.FileReceivedPacket;
 import top.ysqorz.socket.io.packet.StringReceivedPacket;
 
@@ -35,7 +36,8 @@ public class ClientTest {
 
                 @Override
                 public void onFileReceived(FileReceivedPacket packet) {
-                    System.out.println("[From server]: " + packet.getEntity().getAbsolutePath());
+                    FileDescriptor fileDescriptor = packet.getEntity();
+                    System.out.println("[From server]: " + fileDescriptor.getFile().getAbsolutePath());
                 }
 
                 @Override
@@ -90,7 +92,7 @@ public class ClientTest {
 //                        }
 //                    });
                     try {
-                        client.sendFileSyncAck(new File(text), 60);
+                        client.sendFileSyncAck(new FileDescriptor(new File(text)), 60);
                         System.out.println("同步等待Ack");
                     } catch (AckTimeoutException e) {
                         e.printStackTrace();

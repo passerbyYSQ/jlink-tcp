@@ -2,6 +2,7 @@ package top.ysqorz.socket.io;
 
 import top.ysqorz.socket.io.exception.SendException;
 import top.ysqorz.socket.io.packet.*;
+import top.ysqorz.socket.io.packet.FileDescriptor;
 import top.ysqorz.socket.log.Logger;
 import top.ysqorz.socket.log.LoggerFactory;
 
@@ -45,8 +46,8 @@ public class WriteHandler implements Closeable {
         return packet;
     }
 
-    public FileSendPacket sendFile(File file) {
-        FileSendPacket packet = new FileSendPacket(file, outputStream);
+    public FileSendPacket sendFile(FileDescriptor fileDescriptor) {
+        FileSendPacket packet = new FileSendPacket(fileDescriptor, outputStream);
         executor.execute(new SendTask(packet));
         return packet;
     }

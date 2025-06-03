@@ -26,7 +26,7 @@ public class ConcurrencyClientTest {
 
                 @Override
                 public void onFileReceived(FileReceivedPacket packet) {
-                    System.out.println("[From server]: " + packet.getEntity().getAbsolutePath());
+                    System.out.println("[From server]: " + packet.getEntity().getFile().getAbsolutePath());
                 }
 
                 @Override

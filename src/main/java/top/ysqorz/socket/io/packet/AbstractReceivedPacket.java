@@ -1,7 +1,9 @@
 package top.ysqorz.socket.io.packet;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -22,10 +24,24 @@ public abstract class AbstractReceivedPacket<T> implements Packet<T> {
     }
 
     protected String readStr() throws IOException {
+        byte[] buffer = readBytes();
+        return new String(buffer, StandardCharsets.UTF_8);
+    }
+
+    protected Object readObject() throws IOException {
+        byte[] buffer = readBytes();
+        try (ObjectInputStream objectInput = new ObjectInputStream(new ByteArrayInputStream(buffer))) {
+            return objectInput.readObject();
+        } catch (ClassNotFoundException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    protected byte[] readBytes() throws IOException {
         int size = inputStream.readInt();
         byte[] buffer = new byte[size];
         inputStream.readFully(buffer);
-        return new String(buffer, StandardCharsets.UTF_8);
+        return buffer;
     }
 
     @Override

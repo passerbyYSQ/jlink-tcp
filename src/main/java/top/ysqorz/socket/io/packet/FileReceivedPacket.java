@@ -3,27 +3,32 @@ package top.ysqorz.socket.io.packet;
 import top.ysqorz.socket.io.IoUtils;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
-import java.util.UUID;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * [int][文件名][long][文件内容]
- * 
+ *
  * @author yaoshiquan
  * @date 2025/5/9
  */
-public class FileReceivedPacket extends AbstractReceivedPacket<File> {
+public class FileReceivedPacket extends AbstractReceivedPacket<FileDescriptor> {
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
     private final byte[] buffer = new byte[IoUtils.BUFFER_SIZE];
-    private final File file;
+    private final FileDescriptor fileDescriptor;
 
     public FileReceivedPacket(DataInputStream inputStream) throws IOException {
         super(inputStream);
-        this.file = readFile();
+        this.fileDescriptor = readFile();
     }
 
     @Override
-    public File getEntity() {
-        return file;
+    public FileDescriptor getEntity() {
+        return fileDescriptor;
     }
 
     @Override
@@ -31,19 +36,25 @@ public class FileReceivedPacket extends AbstractReceivedPacket<File> {
         return FILE_TYPE;
     }
 
-    public File readFile() throws IOException {
-        String fileName = readStr();
-        String uuid = UUID.randomUUID().toString().replace("-", "");
-        File tmpDir = new File(System.getProperty("user.dir"), "tmp/" + uuid);
-        if (!tmpDir.mkdirs()) {
-            throw new IOException("Create dir failed: "+ tmpDir.getAbsolutePath());
-        }
-        File tmpFile = new File(tmpDir, fileName);
+    protected FileDescriptor readFile() throws IOException {
+        FileDescriptor fileDescriptor = (FileDescriptor) readObject();
+        String randName = IoUtils.generateUUID() + "." + fileDescriptor.getSuffix(); // 随机文件名防止重复造成覆盖
+        String date = LocalDateTime.now().format(DATE_FORMATTER); // 文件按日归档
+        Path tmpDir = Paths.get(System.getProperty("user.dir"), "tmp", date);
+        Files.createDirectories(tmpDir);
+        Path tmpFile = tmpDir.resolve(randName);
         long size = getInputStream().readLong(); // 文件的总字节大小
-        try (OutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(tmpFile.toPath()))) {
+        try (OutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(tmpFile))) {
             readBytes(size, outputStream);
+
+            Field field = FileDescriptor.class.getDeclaredField("file");
+            field.setAccessible(true);
+            field.set(fileDescriptor, tmpFile.toFile());
+
+            return fileDescriptor;
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            throw new RuntimeException(ex);
         }
-        return tmpFile;
     }
 
     protected long readBytes(long n) throws IOException {

@@ -3,7 +3,6 @@ package top.ysqorz.socket.io.packet;
 import top.ysqorz.socket.io.IoUtils;
 
 import java.io.*;
-import java.nio.file.Files;
 
 /**
  * ...
@@ -11,13 +10,12 @@ import java.nio.file.Files;
  * @author yaoshiquan
  * @date 2025/5/10
  */
-public class FileSendPacket extends AbstractSendPacket<File> {
-    private final File file;
-    private final byte[] buffer = new byte[IoUtils.BUFFER_SIZE]; // 8KB缓冲区
+public class FileSendPacket extends AbstractSendPacket<FileDescriptor> {
+    private final FileDescriptor fileDescriptor;
 
-    public FileSendPacket(File file, DataOutputStream outputStream) {
+    public FileSendPacket(FileDescriptor fileDescriptor,  DataOutputStream outputStream) {
         super(outputStream);
-        this.file = file;
+        this.fileDescriptor = fileDescriptor;
     }
 
     @Override
@@ -27,8 +25,8 @@ public class FileSendPacket extends AbstractSendPacket<File> {
     }
 
     @Override
-    public File getEntity() {
-        return file;
+    public FileDescriptor getEntity() {
+        return fileDescriptor;
     }
 
     @Override
@@ -37,20 +35,10 @@ public class FileSendPacket extends AbstractSendPacket<File> {
     }
 
     protected void writeFile() throws IOException {
-        writeStr(file.getName());
-        getOutputStream().writeLong(file.length());
-        try (InputStream inputStream = new BufferedInputStream(Files.newInputStream(file.toPath()))) {
-            writeBytes(inputStream);
-        }
-    }
-
-    protected void writeBytes(InputStream inputStream) throws IOException {
-        while (true) {
-            int len = inputStream.read(buffer, 0, buffer.length);
-            if (len == -1) {
-                break;
-            }
-            getOutputStream().write(buffer, 0, len);
+        writeObject(fileDescriptor); // 文件元信息
+        getOutputStream().writeLong(fileDescriptor.getLength()); // 文件二进制的总字节数
+        try (InputStream inputStream = new BufferedInputStream(fileDescriptor.openInputStream())) {
+            IoUtils.copy(inputStream, getOutputStream(), false);
         }
     }
 }

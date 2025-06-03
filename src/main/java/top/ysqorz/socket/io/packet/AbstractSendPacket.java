@@ -1,9 +1,12 @@
 package top.ysqorz.socket.io.packet;
 
+import top.ysqorz.socket.io.IoUtils;
+
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 
 /**
  * ...
@@ -18,7 +21,7 @@ public abstract class AbstractSendPacket<T> implements Packet<T> {
 
     public AbstractSendPacket(DataOutputStream outputStream) {
         this.outputStream = outputStream;
-        this.id = generateUUID();
+        this.id = IoUtils.generateUUID();
     }
 
     public void send() throws IOException {
@@ -36,8 +39,15 @@ public abstract class AbstractSendPacket<T> implements Packet<T> {
         outputStream.write(bytes);
     }
 
-    protected String generateUUID() {
-        return UUID.randomUUID().toString().replace("-", "");
+    protected void writeObject(Object object) throws IOException {
+        try (ByteArrayOutputStream byteArrayOut = new ByteArrayOutputStream();
+             ObjectOutputStream objectOut = new ObjectOutputStream(byteArrayOut)) {
+            objectOut.writeObject(object);
+
+            byte[] bytes = byteArrayOut.toByteArray();
+            outputStream.writeInt(bytes.length);
+            outputStream.write(bytes);
+        }
     }
 
     @Override

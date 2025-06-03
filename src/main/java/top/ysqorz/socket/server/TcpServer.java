@@ -1,7 +1,8 @@
 package top.ysqorz.socket.server;
 
+import top.ysqorz.socket.io.packet.FileDescriptor;
+
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -22,5 +23,5 @@ public interface TcpServer extends Closeable {
 
     void broadcast(String text);
 
-    void broadcast(File file);
+    void broadcast(FileDescriptor fileDescriptor);
 }

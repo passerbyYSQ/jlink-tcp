@@ -7,7 +7,6 @@ import top.ysqorz.socket.io.packet.*;
 import top.ysqorz.socket.log.Logger;
 import top.ysqorz.socket.log.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -127,8 +126,8 @@ public class BaseTcpClient implements Sender, Receiver {
     }
 
     @Override
-    public void sendFile(File file) {
-        sendFile(file, NO_TIMEOUT);
+    public void sendFile(FileDescriptor fileDescriptor) {
+        sendFile(fileDescriptor, NO_TIMEOUT);
     }
 
     @Override
@@ -139,11 +138,8 @@ public class BaseTcpClient implements Sender, Receiver {
     }
 
     @Override
-    public void sendFile(File file, SendCallback callback) {
-        if (!file.exists() || !file.isFile()) {
-            throw new IllegalArgumentException("File not found: " + file.getAbsolutePath());
-        }
-        FileSendPacket packet = getWriteHandler().sendFile(file);
+    public void sendFile(FileDescriptor fileDescriptor, SendCallback callback) {
+        FileSendPacket packet = getWriteHandler().sendFile(fileDescriptor);
         addAck(packet, callback);
         updateWriteTime();
     }
@@ -156,9 +152,9 @@ public class BaseTcpClient implements Sender, Receiver {
     }
 
     @Override
-    public void sendFileSyncAck(File file, int timeout) throws AckTimeoutException {
+    public void sendFileSyncAck(FileDescriptor fileDescriptor, int timeout) throws AckTimeoutException {
         SyncSendCallback callback = new SyncSendCallback(timeout);
-        sendFile(file, callback);
+        sendFile(fileDescriptor, callback);
         callback.syncAck();
     }
 
