@@ -1,9 +1,10 @@
 package top.ysqorz.jlink.io;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
+import java.nio.charset.Charset;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * ...
@@ -34,5 +35,22 @@ public class IoUtils {
 
     public static String generateUUID() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    public static void readSystemInput(Charset charset, Consumer<String> handler) throws IOException {
+        BufferedReader bufReader = new BufferedReader(new InputStreamReader(System.in, charset));
+        while(true) {
+            String line = bufReader.readLine();
+            if (Objects.isNull(line)) {
+                continue;
+            }
+            if (line.isEmpty()) {
+                continue;
+            }
+            if ("exit".equalsIgnoreCase(line)) {
+                break;
+            }
+            handler.accept(line);
+        }
     }
 }
