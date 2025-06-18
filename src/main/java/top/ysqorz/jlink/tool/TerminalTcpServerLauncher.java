@@ -5,6 +5,7 @@ import top.ysqorz.jlink.server.TerminalTcpServer;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Objects;
 
 /**
  * ...
@@ -38,12 +39,16 @@ public class TerminalTcpServerLauncher {
         }
 
         Charset getCharset() {
-            String charset = cmdArgs.getValue("charset", "GBK");
-            return Charset.forName(charset);
+            String charset = cmdArgs.getValue("charset");
+            if (Objects.isNull(charset) || charset.isEmpty()) {
+                return Charset.defaultCharset();
+            } else {
+                return Charset.forName(charset);
+            }
         }
 
         boolean containsHelp() {
-            if (!(cmdArgs.containKey("--help") || cmdArgs.containKey("-h"))) {
+            if (!(cmdArgs.containKey("help") || cmdArgs.containKey("h"))) {
                 return false;
             }
             String usage = "Usage: TerminalTcpServerLauncher [--port=<Port>] [--charset=<Charset>]";

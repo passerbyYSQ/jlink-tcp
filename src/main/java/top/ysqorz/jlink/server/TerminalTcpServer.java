@@ -4,11 +4,18 @@ import top.ysqorz.jlink.io.ExceptionHandler;
 import top.ysqorz.jlink.io.NamedThreadFactory;
 import top.ysqorz.jlink.io.ReceivedCallback;
 import top.ysqorz.jlink.io.packet.AckReceivedPacket;
+import top.ysqorz.jlink.io.packet.FileDescriptor;
 import top.ysqorz.jlink.io.packet.FileReceivedPacket;
 import top.ysqorz.jlink.io.packet.StringReceivedPacket;
+import top.ysqorz.jlink.tool.InternalCmd;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -86,8 +93,56 @@ public class TerminalTcpServer extends DefaultTcpServer {
 
         @Override
         public void onTextReceived(StringReceivedPacket packet) {
-            writer.println(packet.getEntity());
-            writer.flush(); // 必须冲刷缓冲区
+            String str = packet.getEntity();
+            String trimmedStr = str.trim();
+            if (trimmedStr.startsWith(InternalCmd.download)) {
+                handleDownloadCmd(trimmedStr);
+            } else {
+                writer.println(str);
+                writer.flush(); // 必须冲刷缓冲区
+            }
+        }
+
+        void handleDownloadCmd(String line) {
+            String[] args = line.split("\\s+");
+            if (args.length < 2) {
+                return;
+            }
+            Path srcPath = Paths.get(args[1]);
+            String targetDir = args.length >= 3 && Objects.nonNull(args[2]) ? args[2] : "./";
+            try {
+                List<Path> fileList = getFileList(srcPath);
+                for (int i = 0; i < fileList.size(); i++) {
+                    Path filePath = fileList.get(i);
+                    String relativePath = srcPath.relativize(filePath.getParent()).toString();
+                    Path targetDirPath = Paths.get(targetDir, relativePath);
+                    String flag = String.format("[%d]", i);
+                    if (i == fileList.size() - 1) {
+                        flag = "[END]" + flag;
+                    }
+                    FileDescriptor fileDescriptor = FileDescriptor.builder(filePath.toFile())
+                            .targetDir(targetDirPath.toString())
+                            .description(flag)
+                            .build();
+                    handler.sendFile(fileDescriptor);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        List<Path> getFileList(Path path) throws IOException {
+            List<Path> filePaths = new ArrayList<>();
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    if (!attrs.isDirectory()) {
+                        filePaths.add(file);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+            return filePaths;
         }
 
         @Override

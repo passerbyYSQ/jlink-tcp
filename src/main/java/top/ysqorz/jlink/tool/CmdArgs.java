@@ -18,6 +18,9 @@ public class CmdArgs {
     }
 
     public CmdArgs(String args) {
+        if (Objects.isNull(args) || args.isEmpty()) {
+            return;
+        }
         String[] argsArray = args.split("\\s+");// 正则匹配1个或多个空格
         parseArgs(argsArray);
     }
@@ -43,8 +46,7 @@ public class CmdArgs {
                     value = next;
                 }
             }
-            String key = args[pointer];
-            argsMap.put(key, value);
+            argsMap.put(extractKey(args[pointer]), value);
             if (Objects.isNull(value)) {
                 return pointer + 1;
             } else {
@@ -53,20 +55,25 @@ public class CmdArgs {
         } else { // 包含=，=签名为key，=后面为value
             String key = str.substring(0, idx);
             if (key.isEmpty()) {
-                throw new IllegalArgumentException(String.format("无效的命令行参数%s，key为空", str));
-            }
-            if (key.startsWith("--")) {
-                key = key.substring(2);
-            } else if (key.startsWith("-")) {
-                key = key.substring(1);
+                throw new IllegalArgumentException(String.format("Invalid parameter %s: Empty key", str));
             }
             // 值可能为空
             String value = null;
             if (idx < str.length() - 1) { // =位于末尾，值应为null
                 value = str.substring(idx + 1);
             }
-            argsMap.put(key, value);
+            argsMap.put(extractKey(key), value);
             return pointer + 1;
+        }
+    }
+
+    private String extractKey(String key) {
+        if (key.startsWith("--")) {
+            return key.substring(2);
+        } else if (key.startsWith("-")) {
+            return key.substring(1);
+        } else {
+            return key;
         }
     }
 

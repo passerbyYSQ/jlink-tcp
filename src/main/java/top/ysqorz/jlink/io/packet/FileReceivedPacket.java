@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 /**
  * [int][文件名][long][文件内容]
@@ -38,18 +39,28 @@ public class FileReceivedPacket extends AbstractReceivedPacket<FileDescriptor> {
 
     protected FileDescriptor readFile() throws IOException {
         FileDescriptor fileDescriptor = (FileDescriptor) readObject();
-        String randName = IoUtils.generateUUID() + "." + fileDescriptor.getSuffix(); // 随机文件名防止重复造成覆盖
-        String date = LocalDateTime.now().format(DATE_FORMATTER); // 文件按日归档
-        Path tmpDir = Paths.get(System.getProperty("user.dir"), "tmp", date);
-        Files.createDirectories(tmpDir);
-        Path tmpFile = tmpDir.resolve(randName);
+
+        String targetDir = fileDescriptor.getTargetDir();
+        Path targetFile;
+        if (Objects.isNull(targetDir)) {
+            String randName = IoUtils.generateUUID() + "." + fileDescriptor.getSuffix(); // 随机文件名防止重复造成覆盖
+            String date = LocalDateTime.now().format(DATE_FORMATTER); // 文件按日归档
+            Path tmpDir = Paths.get(System.getProperty("user.dir"), "tmp", date);
+            Files.createDirectories(tmpDir);
+            targetFile = tmpDir.resolve(randName).normalize();
+        } else {
+            // 指明了目标目录
+            Files.createDirectories(Paths.get(targetDir));
+            targetFile = Paths.get(targetDir, fileDescriptor.getOriginalFileName()).normalize();
+        }
+
         long size = getInputStream().readLong(); // 文件的总字节大小
-        try (OutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(tmpFile))) {
+        try (OutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(targetFile))) {
             readBytes(size, outputStream);
 
             Field field = FileDescriptor.class.getDeclaredField("file");
             field.setAccessible(true);
-            field.set(fileDescriptor, tmpFile.toFile());
+            field.set(fileDescriptor, targetFile.toFile());
 
             return fileDescriptor;
         } catch (NoSuchFieldException | IllegalAccessException ex) {

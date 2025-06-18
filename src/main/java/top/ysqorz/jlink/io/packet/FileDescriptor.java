@@ -18,13 +18,10 @@ public class FileDescriptor implements Serializable {
     private final String originalFileName;
     private final String mimeType;
     private final long length;
-    private final String description;
+    private String description;
+    private String targetDir;
 
-    public FileDescriptor(File file) throws IOException {
-        this(file, null);
-    }
-
-    public FileDescriptor(File file, String description) throws IOException {
+    private FileDescriptor(File file) throws IOException {
         if (!file.exists() || !file.isFile()) {
             throw new FileNotFoundException("File not found: " + file.getAbsolutePath());
         }
@@ -32,7 +29,6 @@ public class FileDescriptor implements Serializable {
         this.originalFileName = file.getName();
         this.mimeType = Files.probeContentType(file.toPath());
         this.length = file.length();
-        this.description = description;
     }
 
     public InputStream openInputStream() throws IOException {
@@ -79,5 +75,35 @@ public class FileDescriptor implements Serializable {
 
     public long getLength() {
         return length;
+    }
+
+    public String getTargetDir() {
+        return targetDir;
+    }
+
+    public static Builder builder(File file) throws IOException {
+        return new Builder(file);
+    }
+
+    public static class Builder {
+        private final FileDescriptor instance;
+
+        public Builder(File file) throws IOException {
+            instance = new FileDescriptor(file);
+        }
+
+        public Builder description(String description) {
+            instance.description = description;
+            return this;
+        }
+
+        public Builder targetDir(String targetDir) {
+            instance.targetDir = targetDir;
+            return this;
+        }
+
+        public FileDescriptor build() {
+            return instance;
+        }
     }
 }

@@ -41,7 +41,7 @@ public class TerminalServerTest {
                     server.broadcast(text);
                 } else if (text.startsWith(FILE_ARGS)) {
                     text = text.substring(FILE_ARGS.length()).trim();
-                    server.broadcast(new FileDescriptor(new File(text)));
+                    server.broadcast(FileDescriptor.builder(new File(text)).build());
                 }
             }
         }

@@ -92,7 +92,7 @@ public class ClientTest {
 //                        }
 //                    });
                     try {
-                        client.sendFileSyncAck(new FileDescriptor(new File(text)), 60);
+                        client.sendFileSyncAck(FileDescriptor.builder(new File(text)).build(), 60);
                         System.out.println("同步等待Ack");
                     } catch (AckTimeoutException e) {
                         e.printStackTrace();
