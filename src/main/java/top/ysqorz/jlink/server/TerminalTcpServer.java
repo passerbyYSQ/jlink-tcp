@@ -111,20 +111,26 @@ public class TerminalTcpServer extends DefaultTcpServer {
             Path srcPath = Paths.get(args[1]);
             String targetDir = args.length >= 3 && Objects.nonNull(args[2]) ? args[2] : "./";
             try {
-                List<Path> fileList = getFileList(srcPath);
-                for (int i = 0; i < fileList.size(); i++) {
-                    Path filePath = fileList.get(i);
-                    String relativePath = srcPath.relativize(filePath.getParent()).toString();
-                    Path targetDirPath = Paths.get(targetDir, relativePath);
-                    String flag = String.format("[%d]", i);
-                    if (i == fileList.size() - 1) {
-                        flag = "[END]" + flag;
+                if (!Files.exists(srcPath)) {
+                    handler.sendText("[ERROR] File or directory not exist: " + srcPath.toAbsolutePath() + "\n");
+                } else {
+                    List<Path> fileList = getFileList(srcPath);
+                    handler.sendText("begin download...\n");
+                    for (int i = 0; i < fileList.size(); i++) {
+                        Path filePath = fileList.get(i).normalize();
+                        String relativePath = srcPath.relativize(filePath.getParent()).toString();
+                        Path targetDirPath = Paths.get(targetDir, relativePath).normalize();
+                        if (Files.exists(filePath)) {
+                            FileDescriptor fileDescriptor = FileDescriptor.builder(filePath.toFile())
+                                    .targetDir(targetDirPath.toString())
+                                    .description(String.format("[%d]", i))
+                                    .build();
+                            handler.sendFile(fileDescriptor);
+                        } else {
+                            handler.sendText("[ERROR] File not exist: " + filePath.toAbsolutePath() + "\n");
+                        }
                     }
-                    FileDescriptor fileDescriptor = FileDescriptor.builder(filePath.toFile())
-                            .targetDir(targetDirPath.toString())
-                            .description(flag)
-                            .build();
-                    handler.sendFile(fileDescriptor);
+                    handler.sendText("File download completed.\n");
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);

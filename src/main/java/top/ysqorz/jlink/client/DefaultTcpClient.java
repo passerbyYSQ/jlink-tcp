@@ -6,6 +6,7 @@ import top.ysqorz.jlink.log.LoggerFactory;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -19,6 +20,7 @@ public class DefaultTcpClient extends BaseTcpClient implements TcpClient, Except
 
     private final boolean enableReconnect;
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
+    private ConnectCallback callback;
 
     public DefaultTcpClient(String host, int port) throws IOException {
         this(host, port, false);
@@ -37,7 +39,13 @@ public class DefaultTcpClient extends BaseTcpClient implements TcpClient, Except
         getAckTimeoutScanner().shutdownNow();
     }
 
+    @Override
+    public void setConnectCallback(ConnectCallback callback) {
+        this.callback = callback;
+    }
+
     @SuppressWarnings("BusyWait")
+    @Override
     public void tryReconnect() throws InterruptedException {
         if (!reconnecting.compareAndSet(false, true)) {
             return;
@@ -52,6 +60,9 @@ public class DefaultTcpClient extends BaseTcpClient implements TcpClient, Except
                 try {
                     reconnect();
                     log.info("Reconnected successfully! Current time:" + System.currentTimeMillis());
+                    if (Objects.nonNull(callback)) {
+                        callback.onReconnected();
+                    }
                     break;
                 } catch (IOException ex) {
                     log.error(String.format("The %dth attempt to reconnect failed. Current time: %d; Exception message: %s",

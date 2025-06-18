@@ -89,16 +89,8 @@ public class WriteHandler implements Closeable {
 
         @Override
         public int compareTo(SendTask other) {
-            if (getType() != other.getType()) {
-                // type越小，包越轻量，优先小包发送。因为大包的发送可能会导致后面的Ack包超时。除非将包拆细，而非一个业务实体一个包
-                // 或者在业务层使用的时候，将文件传输和文本传输分开，分别使用不同的长连接
-                return Byte.compare(getType(), other.getType());
-            } else {
-                // 单线程在循环中发送时，间隔非常短，以毫秒为单位的发送时间可能相同，导致无法保证发送顺序
-                //return Long.compare(getSendTime(), other.getSendTime());
-                // 单线程调用发送，一定保证发送顺序；多线程调用发送，无顺序可言
-                return Integer.compare(sort, other.sort);
-            }
+            // 单线程调用发送，一定保证发送顺序；多线程调用发送，无顺序可言
+            return Integer.compare(sort, other.sort);
         }
     }
 }

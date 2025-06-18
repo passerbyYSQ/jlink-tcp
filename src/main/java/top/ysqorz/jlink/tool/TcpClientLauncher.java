@@ -38,7 +38,6 @@ public class TcpClientLauncher {
 
     private static class InputHandler implements Consumer<String>, ReceivedCallback {
         TcpClient client;
-        boolean disableInput;
 
         InputHandler(TcpClient client) {
             this.client = client;
@@ -46,19 +45,18 @@ public class TcpClientLauncher {
 
         @Override
         public void accept(String line) {
-            if (disableInput) {
-                return;
-            }
             String trimmedLine = line.trim();
             if (trimmedLine.startsWith(InternalCmd.download)) {
                 handleDownloadCmd(trimmedLine);
+            } else if (trimmedLine.startsWith(InternalCmd.upload)) {
+                handleUploadCmd(trimmedLine);
             } else {
                 client.sendText(line);
             }
         }
         // download E:\temp\test ./
         void handleDownloadCmd(String line) {
-            String[] args = line.split("\\s+");
+            String[] args = line.split("\\s+"); // TODO 待支持路径有空格的情况
             if (args.length < 2) {
                 System.out.println("usage: download <Server Absolute Path> [<Local Dir>]");
                 System.out.println("example: download E:\\tmp\\hello.txt ./tmp");
@@ -70,8 +68,15 @@ public class TcpClientLauncher {
                 return;
             }
             client.sendText(line); // 发送命令
-            System.out.println("begin download...");
-            disableInput = true; // 后续忽略用户的输入
+        }
+
+        void handleUploadCmd(String line) {
+            String[] args = line.split("\\s+");
+            if (args.length < 2) {
+                System.out.println("usage: upload <Local Path> [<Server Absolute Dir>]");
+                System.out.println("example: upload ./hello.txt E:\\tmp");
+                return;
+            }
         }
 
         @Override
@@ -83,11 +88,6 @@ public class TcpClientLauncher {
         public void onFileReceived(FileReceivedPacket packet) {
             FileDescriptor fileDescriptor = packet.getEntity();
             System.out.println("File received: " + fileDescriptor.getFile().getAbsolutePath());
-            String description = fileDescriptor.getDescription();
-            if (description.startsWith("[END]")) {
-                disableInput = false; // 恢复输入
-                System.out.println("File download completed.");
-            }
         }
 
         @Override

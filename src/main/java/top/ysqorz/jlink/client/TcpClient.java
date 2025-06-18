@@ -11,4 +11,10 @@ import top.ysqorz.jlink.io.Sender;
  */
 public interface TcpClient extends Sender, Receiver {
     void tryReconnect() throws InterruptedException;
+
+    void setConnectCallback(ConnectCallback callback);
+
+    interface ConnectCallback {
+        void onReconnected();
+    }
 }
