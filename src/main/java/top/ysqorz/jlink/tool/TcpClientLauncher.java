@@ -71,6 +71,7 @@ public class TcpClientLauncher {
                 return;
             }
             client.sendText(line);
+            client.sendText("");
         }
 
         void handleUploadCmd(String line) {
@@ -119,6 +120,7 @@ public class TcpClientLauncher {
                     }
                 }
                 System.out.println("File upload completed.");
+                client.sendText("");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

@@ -51,9 +51,6 @@ public class IoUtils {
             if (Objects.isNull(line)) {
                 continue;
             }
-            if (line.isEmpty()) {
-                continue;
-            }
             if ("exit".equalsIgnoreCase(line)) {
                 break;
             }
