@@ -1,20 +1,21 @@
-package top.ysqorz.jlink.server;
+package top.ysqorz.jlink.tool;
 
 import top.ysqorz.jlink.io.ExceptionHandler;
+import top.ysqorz.jlink.io.IoUtils;
 import top.ysqorz.jlink.io.NamedThreadFactory;
 import top.ysqorz.jlink.io.ReceivedCallback;
 import top.ysqorz.jlink.io.packet.AckReceivedPacket;
 import top.ysqorz.jlink.io.packet.FileDescriptor;
 import top.ysqorz.jlink.io.packet.FileReceivedPacket;
 import top.ysqorz.jlink.io.packet.StringReceivedPacket;
-import top.ysqorz.jlink.tool.CmdArgs;
-import top.ysqorz.jlink.tool.InternalCmd;
+import top.ysqorz.jlink.server.ClientHandler;
+import top.ysqorz.jlink.server.DefaultTcpServer;
 
 import java.io.*;
 import java.nio.charset.Charset;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -109,47 +110,40 @@ public class TerminalTcpServer extends DefaultTcpServer {
             if (args.length < 2) {
                 return;
             }
-            Path srcPath = Paths.get(args[1]);
-            String targetDir = args.length >= 3 && Objects.nonNull(args[2]) ? args[2] : "./";
+            Path srcPath = Paths.get(args[1]).normalize();
+            String targetDir = args.length >= 3 && Objects.nonNull(args[2]) ? args[2] : "." + File.separator;
             try {
                 if (!Files.exists(srcPath)) {
-                    handler.sendText("[ERROR] File or directory not exist: " + srcPath.toAbsolutePath() + "\n");
+                    handler.sendText("[ERROR] Path not exist: " + srcPath.toAbsolutePath() + "\n");
+                    return;
+                }
+                handler.sendText("begin download...\n");
+                if (Files.isRegularFile(srcPath)) {
+                    FileDescriptor fileDescriptor = FileDescriptor.builder(srcPath.toFile())
+                            .targetDir(targetDir)
+                            .build();
+                    handler.sendFile(fileDescriptor);
                 } else {
-                    List<Path> fileList = getFileList(srcPath);
-                    handler.sendText("begin download...\n");
+                    List<Path> fileList = IoUtils.getFileList(srcPath);
                     for (int i = 0; i < fileList.size(); i++) {
                         Path filePath = fileList.get(i).normalize();
+                        if (!Files.exists(filePath)) {
+                            handler.sendText("[ERROR] File not exist: " + filePath.toAbsolutePath() + "\n");
+                            continue;
+                        }
                         String relativePath = srcPath.relativize(filePath.getParent()).toString();
                         Path targetDirPath = Paths.get(targetDir, relativePath).normalize();
-                        if (Files.exists(filePath)) {
-                            FileDescriptor fileDescriptor = FileDescriptor.builder(filePath.toFile())
-                                    .targetDir(targetDirPath.toString())
-                                    .description(String.format("[%d]", i))
-                                    .build();
-                            handler.sendFile(fileDescriptor);
-                        } else {
-                            handler.sendText("[ERROR] File not exist: " + filePath.toAbsolutePath() + "\n");
-                        }
+                        FileDescriptor fileDescriptor = FileDescriptor.builder(filePath.toFile())
+                                .targetDir(targetDirPath.toString())
+                                .description(String.format("[%d]", i))
+                                .build();
+                        handler.sendFile(fileDescriptor);
                     }
-                    handler.sendText("File download completed.\n");
                 }
+                handler.sendText("File download completed.\n");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }
-
-        List<Path> getFileList(Path path) throws IOException {
-            List<Path> filePaths = new ArrayList<>();
-            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    if (!attrs.isDirectory()) {
-                        filePaths.add(file);
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-            return filePaths;
         }
 
         @Override

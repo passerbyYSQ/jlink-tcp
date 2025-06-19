@@ -2,6 +2,13 @@ package top.ysqorz.jlink.io;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -52,5 +59,19 @@ public class IoUtils {
             }
             handler.accept(line);
         }
+    }
+
+    public static List<Path> getFileList(Path path) throws IOException {
+        List<Path> filePaths = new ArrayList<>();
+        Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (!attrs.isDirectory()) {
+                    filePaths.add(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        return filePaths;
     }
 }

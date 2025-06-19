@@ -11,8 +11,10 @@ import top.ysqorz.jlink.io.packet.StringReceivedPacket;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -68,15 +70,57 @@ public class TcpClientLauncher {
                 System.out.println("[ERROR] The second parameter must be the absolute path of a file or directory on the server, and cannot be a relative path");
                 return;
             }
-            client.sendText(line); // 发送命令
+            client.sendText(line);
         }
 
         void handleUploadCmd(String line) {
-            String[] args = line.split("\\s+");
-            if (args.length < 2) {
-                System.out.println("usage: upload <Local Path> [<Server Absolute Dir>]");
+            String[] args = CmdArgs.splitArgs(line);
+            if (args.length < 3) {
+                System.out.println("usage: upload <Local Path> <Server Absolute Dir>");
                 System.out.println("example: upload ./hello.txt E:\\tmp");
                 return;
+            }
+            Path localPath = Paths.get(args[1]);
+            if (!Files.exists(localPath)) {
+                System.out.println("[ERROR] Path not exist: " + localPath.toAbsolutePath());
+                return;
+            }
+            Path serverPath = Paths.get(args[2]);
+            if (!serverPath.isAbsolute()) {
+                System.out.println("[ERROR] The third parameter must be the absolute path of a file or directory on the server, and cannot be a relative path");
+                return;
+            }
+            try {
+                localPath = localPath.normalize();
+                serverPath = serverPath.normalize();
+                System.out.println("begin upload...");
+                if (Files.isRegularFile(localPath)) {
+                    FileDescriptor fileDescriptor = FileDescriptor.builder(localPath.toFile())
+                            .targetDir(serverPath.toString())
+                            .build();
+                    client.sendFile(fileDescriptor);
+                    System.out.println("File uploaded: " + localPath.toAbsolutePath());
+                } else {
+                    List<Path> fileList = IoUtils.getFileList(localPath);
+                    for (int i = 0; i < fileList.size(); i++) {
+                        Path filePath = fileList.get(i).normalize();
+                        if (!Files.exists(filePath)) {
+                            System.out.println("[ERROR] File not exist: " + filePath.toAbsolutePath());
+                            continue;
+                        }
+                        String relativePath = localPath.relativize(filePath.getParent()).toString();
+                        Path targetDirPath = serverPath.resolve(relativePath);
+                        FileDescriptor fileDescriptor = FileDescriptor.builder(filePath.toFile())
+                                .targetDir(targetDirPath.toString())
+                                .description(String.format("[%d]", i))
+                                .build();
+                        client.sendFile(fileDescriptor);
+                        System.out.println("File uploaded: " + filePath.toAbsolutePath());
+                    }
+                }
+                System.out.println("File upload completed.");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
 

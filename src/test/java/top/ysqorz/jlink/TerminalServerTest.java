@@ -2,7 +2,7 @@ package top.ysqorz.jlink;
 
 import top.ysqorz.jlink.io.packet.FileDescriptor;
 import top.ysqorz.jlink.server.TcpServer;
-import top.ysqorz.jlink.server.TerminalTcpServer;
+import top.ysqorz.jlink.tool.TerminalTcpServer;
 
 import java.io.BufferedReader;
 import java.io.File;
