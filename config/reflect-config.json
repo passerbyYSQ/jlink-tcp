@@ -1,0 +1,55 @@
+[
+{
+  "name":"java.io.Closeable",
+  "methods":[{"name":"close","parameterTypes":[] }]}
+,
+{
+  "name":"java.security.MessageDigestSpi"}
+,
+{
+  "name":"java.security.SecureRandomParameters"}
+,
+{
+  "name":"sun.security.provider.DRBG",
+  "methods":[{"name":"<init>","parameterTypes":["java.security.SecureRandomParameters"] }]}
+,
+{
+  "name":"sun.security.provider.SHA",
+  "methods":[{"name":"<init>","parameterTypes":[] }]}
+,
+{
+  "name":"sun.security.provider.SHA2$SHA256",
+  "methods":[{"name":"<init>","parameterTypes":[] }]}
+,
+{
+  "name":"top.ysqorz.jlink.io.Receiver",
+  "methods":[
+    {"name":"setReceivedCallback","parameterTypes":["top.ysqorz.jlink.io.ReceivedCallback"] }, 
+    {"name":"start","parameterTypes":[] }
+  ]}
+,
+{
+  "name":"top.ysqorz.jlink.io.Sender",
+  "methods":[
+    {"name":"sendFile","parameterTypes":["top.ysqorz.jlink.io.packet.FileDescriptor"] }, 
+    {"name":"sendText","parameterTypes":["java.lang.String"] }, 
+    {"name":"setExceptionHandler","parameterTypes":["top.ysqorz.jlink.io.ExceptionHandler"] }
+  ]}
+,
+{
+  "name":"top.ysqorz.jlink.io.packet.FileDescriptor",
+  "fields":[{"name":"file"}]}
+,
+{
+  "name":"top.ysqorz.jlink.server.ClientHandler",
+  "methods":[{"name":"getClientInfo","parameterTypes":[] }]}
+,
+{
+  "name":"top.ysqorz.jlink.tool.TcpClientLauncher",
+  "methods":[{"name":"main","parameterTypes":["java.lang.String[]"] }]}
+,
+{
+  "name":"top.ysqorz.jlink.tool.TerminalTcpServerLauncher",
+  "methods":[{"name":"main","parameterTypes":["java.lang.String[]"] }]}
+
+]
