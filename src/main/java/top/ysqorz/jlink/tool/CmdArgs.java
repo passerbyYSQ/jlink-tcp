@@ -1,8 +1,7 @@
 package top.ysqorz.jlink.tool;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Function;
 
 /**
  * ...
@@ -18,39 +17,87 @@ public class CmdArgs {
     }
 
     public CmdArgs(String args) {
-        if (Objects.isNull(args) || args.isEmpty()) {
-            return;
-        }
-        String[] argsArray = args.split("\\s+");// 正则匹配1个或多个空格
+        String[] argsArray = splitArgs(args);
         parseArgs(argsArray);
     }
 
-    protected void parseArgs(String[] args) {
+    /**
+     * 支持处理参数有空格的情况
+     */
+    public static String[] splitArgs(String cmd) {
+        if (Objects.isNull(cmd) || cmd.isEmpty()) {
+            return new String[0];
+        }
+        char[] charArray = cmd.toCharArray();
+        List<String> argList = new ArrayList<>();
+        StringBuilder arg = new StringBuilder();
+
+        Function<Integer, Boolean> isValidLeftQuotation = p -> {
+            if (charArray[p] != '"') {
+                return false;
+            }
+            return p == 0 || charArray[p - 1] == ' ';
+        };
+        Function<Integer, Boolean> isValidRightQuotation = p -> {
+            if (charArray[p] != '"') {
+                return false;
+            }
+            return p == charArray.length - 1 || charArray[p + 1] == ' ';
+        };
+        Runnable addArg = () -> {
+            if (arg.length() == 0) {
+                return;
+            }
+            argList.add(arg.toString());
+            arg.delete(0, arg.length());
+        };
+
+        boolean quoted = false;
+        for (int i = 0; i < charArray.length; i++) {
+            char ch = charArray[i];
+            if (isValidLeftQuotation.apply(i)) {
+                quoted = true;
+            } else if (isValidRightQuotation.apply(i)) {
+                quoted = false;
+                addArg.run();
+            } else {
+                if (quoted || ch != ' ') {
+                    arg.append(ch);
+                } else {
+                    addArg.run();
+                }
+            }
+        }
+        addArg.run();
+        return argList.toArray(new String[0]);
+    }
+
+    private void parseArgs(String[] args) {
         if (Objects.isNull(args) || args.length == 0) {
             return;
         }
-        int pointer = 0;
-        while (pointer < args.length) {
-            pointer = parseArg(pointer, args);
+        int p = 0;
+        while (p < args.length) {
+            p = parseArg(p, args);
         }
     }
 
-    protected int parseArg(int pointer, String[] args) {
-        String str = args[pointer];
+    private int parseArg(int p, String[] args) {
+        String str = args[p];
         int idx = str.indexOf("=");
         if (idx < 0) { // 没有=，整个当作key，后面一个当作value
             String value = null;
-            if (pointer + 1 < args.length) {
-                String next = args[pointer + 1];
+            if (p + 1 < args.length) {
+                String next = args[p + 1];
                 if (!(next.startsWith("--") || next.startsWith("-"))) { // 下一个元素不是key
                     value = next;
                 }
             }
-            argsMap.put(extractKey(args[pointer]), value);
+            argsMap.put(extractKey(args[p]), value);
             if (Objects.isNull(value)) {
-                return pointer + 1;
+                return p + 1;
             } else {
-                return pointer + 2;
+                return p + 2;
             }
         } else { // 包含=，=签名为key，=后面为value
             String key = str.substring(0, idx);
@@ -63,11 +110,11 @@ public class CmdArgs {
                 value = str.substring(idx + 1);
             }
             argsMap.put(extractKey(key), value);
-            return pointer + 1;
+            return p + 1;
         }
     }
 
-    private String extractKey(String key) {
+    protected String extractKey(String key) {
         if (key.startsWith("--")) {
             return key.substring(2);
         } else if (key.startsWith("-")) {

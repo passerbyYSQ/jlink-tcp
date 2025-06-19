@@ -54,9 +54,10 @@ public class TcpClientLauncher {
                 client.sendText(line);
             }
         }
+
         // download E:\temp\test ./
         void handleDownloadCmd(String line) {
-            String[] args = line.split("\\s+"); // TODO 待支持路径有空格的情况
+            String[] args = CmdArgs.splitArgs(line);
             if (args.length < 2) {
                 System.out.println("usage: download <Server Absolute Path> [<Local Dir>]");
                 System.out.println("example: download E:\\tmp\\hello.txt ./tmp");

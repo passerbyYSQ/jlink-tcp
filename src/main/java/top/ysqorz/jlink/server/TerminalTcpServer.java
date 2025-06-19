@@ -7,6 +7,7 @@ import top.ysqorz.jlink.io.packet.AckReceivedPacket;
 import top.ysqorz.jlink.io.packet.FileDescriptor;
 import top.ysqorz.jlink.io.packet.FileReceivedPacket;
 import top.ysqorz.jlink.io.packet.StringReceivedPacket;
+import top.ysqorz.jlink.tool.CmdArgs;
 import top.ysqorz.jlink.tool.InternalCmd;
 
 import java.io.*;
@@ -104,7 +105,7 @@ public class TerminalTcpServer extends DefaultTcpServer {
         }
 
         void handleDownloadCmd(String line) {
-            String[] args = line.split("\\s+");
+            String[] args = CmdArgs.splitArgs(line);
             if (args.length < 2) {
                 return;
             }
