@@ -63,14 +63,20 @@ public class TcpClientLauncher {
             if (args.length < 2) {
                 System.out.println("usage: download <Server Absolute Path> [<Local Dir>]");
                 System.out.println("example: download E:\\tmp\\hello.txt ./tmp");
+                triggerEnter();
                 return;
             }
             Path serverPath = Paths.get(args[1]);
             if (!serverPath.isAbsolute()) {
                 System.out.println("[ERROR] The second parameter must be the absolute path of a file or directory on the server, and cannot be a relative path");
+                triggerEnter();
                 return;
             }
             client.sendText(line);
+            triggerEnter();
+        }
+
+        void triggerEnter() {
             client.sendText("");
         }
 
@@ -79,16 +85,19 @@ public class TcpClientLauncher {
             if (args.length < 3) {
                 System.out.println("usage: upload <Local Path> <Server Absolute Dir>");
                 System.out.println("example: upload ./hello.txt E:\\tmp");
+                triggerEnter();
                 return;
             }
             Path localPath = Paths.get(args[1]);
             if (!Files.exists(localPath)) {
                 System.out.println("[ERROR] Path not exist: " + localPath.toAbsolutePath());
+                triggerEnter();
                 return;
             }
             Path serverPath = Paths.get(args[2]);
             if (!serverPath.isAbsolute()) {
                 System.out.println("[ERROR] The third parameter must be the absolute path of a file or directory on the server, and cannot be a relative path");
+                triggerEnter();
                 return;
             }
             try {
@@ -120,7 +129,7 @@ public class TcpClientLauncher {
                     }
                 }
                 System.out.println("File upload completed.");
-                client.sendText("");
+                triggerEnter();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
