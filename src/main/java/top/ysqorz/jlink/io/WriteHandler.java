@@ -87,10 +87,19 @@ public class WriteHandler implements Closeable {
             return sendPacket.getSendTime();
         }
 
+        boolean isAck() {
+            return Packet.ACK_TYPE == getType();
+        }
+
         @Override
         public int compareTo(SendTask other) {
-            // 单线程调用发送，一定保证发送顺序；多线程调用发送，无顺序可言
-            return Integer.compare(sort, other.sort);
+            if ((isAck() || other.isAck()) && getType() != other.getType()) {
+                // type越小，包越轻量，优先小包发送。因为有可能大文件在发送过程中，会导致后面的Ack包超时
+                return Byte.compare(getType(), other.getType());
+            } else {
+                // 单线程调用发送，一定保证发送顺序；多线程调用发送，无顺序可言
+                return Integer.compare(sort, other.sort);
+            }
         }
     }
 }
